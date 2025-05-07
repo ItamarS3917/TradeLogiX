@@ -1,0 +1,37 @@
+# File: requirements.txt
+# Purpose: Python dependencies for the Trading Journal application
+
+# Web Framework
+fastapi==0.75.0
+uvicorn==0.17.6
+
+# Database
+sqlalchemy==1.4.36
+alembic==1.7.7
+pydantic==1.9.0
+
+# Security
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==3.2.0
+python-multipart==0.0.5
+
+# Utilities
+requests==2.27.1
+python-dateutil==2.8.2
+aiohttp==3.8.1
+aiofiles==0.8.0
+pillow==9.1.0
+
+# MCP SDK (placeholder - to be updated with actual package)
+# mcp-sdk==1.0.0
+
+# Testing
+pytest==7.1.1
+pytest-asyncio==0.18.3
+httpx==0.22.0
+
+# Development
+black==22.3.0
+isort==5.10.1
+flake8==4.0.1
