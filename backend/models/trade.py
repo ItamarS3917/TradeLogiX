@@ -1,62 +1,80 @@
 # File: backend/models/trade.py
-# Purpose: Trade model definition for the Trading Journal application
+# Purpose: Trade model to record trading activities
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.sql import func
+import enum
 
 from ..db.database import Base
 
-class Trade(Base):
-    """
-    Trade model representing a trading transaction in the journal
-    """
-    __tablename__ = "trades"
+class TradeOutcome(str, enum.Enum):
+    """Enum for trade outcomes"""
+    WIN = "WIN"
+    LOSS = "LOSS"
+    BREAKEVEN = "BREAKEVEN"
 
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True)
+class EmotionalState(str, enum.Enum):
+    """Enum for emotional states during trading"""
+    CALM = "CALM"
+    EXCITED = "EXCITED"
+    FEARFUL = "FEARFUL"
+    GREEDY = "GREEDY"
+    ANXIOUS = "ANXIOUS"
+    CONFIDENT = "CONFIDENT"
+    FRUSTRATED = "FRUSTRATED"
+    NEUTRAL = "NEUTRAL"
+    OTHER = "OTHER"
+
+class PlanAdherence(str, enum.Enum):
+    """Enum for plan adherence levels"""
+    FOLLOWED = "FOLLOWED"
+    PARTIAL = "PARTIAL"
+    DEVIATED = "DEVIATED"
+    NO_PLAN = "NO_PLAN"
+
+class Trade(Base):
+    """Trade model represents individual trades placed by the user"""
     
-    # Foreign keys
+    __tablename__ = "trades"
+    
+    id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    daily_plan_id = Column(Integer, ForeignKey("daily_plans.id"), nullable=True)
     
     # Trade details
-    symbol = Column(String, index=True)  # Initially focused on NQ
+    symbol = Column(String, index=True)
     setup_type = Column(String, index=True)  # MMXM/ICT concept categories
-    
-    # Trade execution details
     entry_price = Column(Float)
     exit_price = Column(Float)
     position_size = Column(Float)
-    entry_time = Column(DateTime)
-    exit_time = Column(DateTime)
+    entry_time = Column(DateTime(timezone=True))
+    exit_time = Column(DateTime(timezone=True))
     
-    # Risk and reward
+    # Risk/Reward
     planned_risk_reward = Column(Float)
     actual_risk_reward = Column(Float)
     
     # Outcome
-    outcome = Column(String)  # Win/Loss/Breakeven
+    outcome = Column(Enum(TradeOutcome), index=True)
     profit_loss = Column(Float, index=True)
     
     # Psychological factors
-    emotional_state = Column(String)
-    plan_adherence = Column(Integer)  # Scale 1-10
+    emotional_state = Column(Enum(EmotionalState))
+    plan_adherence = Column(Enum(PlanAdherence))
     
-    # Notes and attachments
+    # Notes and media
     notes = Column(Text)
-    screenshots = Column(Text)  # JSON array of paths or blobs
-    tags = Column(Text)  # JSON array of tags
-    
-    # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    screenshots = Column(JSON, default=list)  # Store paths to screenshots
+    tags = Column(JSON, default=list)  # Store tags as a list
     
     # Relationships
     user = relationship("User", back_populates="trades")
-    daily_plan = relationship("DailyPlan", back_populates="trades")
+    related_plan_id = Column(Integer, ForeignKey("daily_plans.id"), nullable=True)
+    related_plan = relationship("DailyPlan", back_populates="trades")
     
-    # TODO: Add MCP-specific fields
-    # TODO: Add validation methods
-    # TODO: Add analytics methods
-    # TODO: Add serialization methods
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    def __repr__(self):
+        return f"<Trade(id={self.id}, symbol={self.symbol}, outcome={self.outcome})>"

@@ -1,144 +1,196 @@
 # File: backend/mcp/mcp_config.py
-# Purpose: Configuration for MCP servers and clients
+# Purpose: MCP configuration and server setup
 
 import os
 import logging
 from typing import Dict, Any, List
 
-# MCP SDK imports
-# TODO: Import actual MCP SDK once available
-
-# Import MCP servers
-from .servers.trade_analysis_server import initialize as init_trade_analysis
-from .servers.market_data_server import initialize as init_market_data
-from .servers.statistics_server import initialize as init_statistics
-from .servers.alert_server import initialize as init_alerts
-from .servers.ai_server import initialize as init_ai
-
 # Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # MCP configuration
 MCP_CONFIG = {
     "servers": {
-        "trade_analysis": {
+        "ai_server": {
             "enabled": True,
-            "port": 8001,
-            "host": "localhost",
-            "external_connections": [
-                "wshobson/mcp-trader"
-            ]
+            "host": os.getenv("MCP_AI_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_AI_SERVER_PORT", "5001")),
+            "api_key": os.getenv("MCP_AI_SERVER_API_KEY", "development-key"),
+            "model": os.getenv("MCP_AI_SERVER_MODEL", "claude-3-opus-20240229")
         },
-        "market_data": {
+        "market_data_server": {
             "enabled": True,
-            "port": 8002,
-            "host": "localhost",
-            "external_connections": [
-                "financial-datasets/mcp-server"
-            ]
+            "host": os.getenv("MCP_MARKET_DATA_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_MARKET_DATA_SERVER_PORT", "5002")),
+            "api_key": os.getenv("MCP_MARKET_DATA_SERVER_API_KEY", "development-key"),
+            "data_sources": ["alpaca", "yahoo", "local"]
         },
-        "statistics": {
+        "statistics_server": {
             "enabled": True,
-            "port": 8003,
-            "host": "localhost",
-            "external_connections": []
+            "host": os.getenv("MCP_STATISTICS_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_STATISTICS_SERVER_PORT", "5003")),
+            "cache_enabled": os.getenv("MCP_STATISTICS_CACHE_ENABLED", "true").lower() == "true",
+            "cache_ttl": int(os.getenv("MCP_STATISTICS_CACHE_TTL", "3600"))
         },
-        "alerts": {
+        "trade_analysis_server": {
             "enabled": True,
-            "port": 8004,
-            "host": "localhost",
-            "external_connections": []
+            "host": os.getenv("MCP_TRADE_ANALYSIS_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_TRADE_ANALYSIS_SERVER_PORT", "5004")),
+            "analysis_types": ["pattern", "risk", "emotion", "adherence"]
         },
-        "ai": {
+        "alert_server": {
             "enabled": True,
-            "port": 8005,
-            "host": "localhost",
-            "external_connections": [
-                "anthropic/claude-mcp"
-            ]
+            "host": os.getenv("MCP_ALERT_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_ALERT_SERVER_PORT", "5005")),
+            "notification_channels": ["app", "email"]
+        },
+        "sentiment_analysis": {
+            "enabled": True,
+            "host": os.getenv("MCP_SENTIMENT_ANALYSIS_SERVER_HOST", "localhost"),
+            "port": int(os.getenv("MCP_SENTIMENT_ANALYSIS_SERVER_PORT", "5006")),
+            "model": os.getenv("MCP_SENTIMENT_ANALYSIS_MODEL", "default")
         }
     },
     "client": {
-        "timeout": 30,
-        "retry_attempts": 3,
-        "cache_enabled": True,
-        "cache_ttl": 300  # 5 minutes
+        "timeout": int(os.getenv("MCP_CLIENT_TIMEOUT", "30")),
+        "max_retries": int(os.getenv("MCP_CLIENT_MAX_RETRIES", "3")),
+        "retry_delay": int(os.getenv("MCP_CLIENT_RETRY_DELAY", "1"))
+    },
+    "security": {
+        "enabled": os.getenv("MCP_SECURITY_ENABLED", "true").lower() == "true",
+        "encryption": os.getenv("MCP_SECURITY_ENCRYPTION", "true").lower() == "true",
+        "token_ttl": int(os.getenv("MCP_SECURITY_TOKEN_TTL", "3600"))
     }
 }
 
-def load_mcp_config() -> Dict[str, Any]:
+# Server states
+SERVER_STATES = {
+    "ai_server": {"running": False, "instance": None},
+    "market_data_server": {"running": False, "instance": None},
+    "statistics_server": {"running": False, "instance": None},
+    "trade_analysis_server": {"running": False, "instance": None},
+    "alert_server": {"running": False, "instance": None},
+    "sentiment_analysis": {"running": False, "instance": None}
+}
+
+def get_mcp_config() -> Dict[str, Any]:
     """
-    Load MCP configuration from environment or config file
+    Get MCP configuration
     
     Returns:
-        Dictionary containing MCP configuration
+        Dict[str, Any]: MCP configuration
     """
-    # TODO: Load config from environment variables
-    # TODO: Load config from file if available
-    # TODO: Validate configuration
-    
     return MCP_CONFIG
 
-def get_mcp_client_config() -> Dict[str, Any]:
-    """
-    Get client-specific MCP configuration
-    
-    Returns:
-        Dictionary containing client configuration
-    """
-    config = load_mcp_config()
-    return config.get("client", {})
-
-def get_mcp_server_config(server_name: str) -> Dict[str, Any]:
+def get_server_config(server_name: str) -> Dict[str, Any]:
     """
     Get configuration for a specific MCP server
     
     Args:
-        server_name: Name of the server
+        server_name (str): Name of the server
         
     Returns:
-        Dictionary containing server configuration
+        Dict[str, Any]: Server configuration
     """
-    config = load_mcp_config()
-    return config.get("servers", {}).get(server_name, {})
+    if server_name in MCP_CONFIG["servers"]:
+        return MCP_CONFIG["servers"][server_name]
+    
+    logger.error(f"Server '{server_name}' not found in MCP configuration")
+    raise ValueError(f"Server '{server_name}' not found in MCP configuration")
 
 def get_enabled_servers() -> List[str]:
     """
     Get list of enabled MCP servers
     
     Returns:
-        List of enabled server names
+        List[str]: List of enabled server names
     """
-    config = load_mcp_config()
-    return [name for name, server_config in config.get("servers", {}).items() 
-            if server_config.get("enabled", False)]
+    return [
+        server_name
+        for server_name, config in MCP_CONFIG["servers"].items()
+        if config.get("enabled", False)
+    ]
 
 def setup_mcp_servers() -> None:
     """
-    Initialize and start all enabled MCP servers
+    Set up and start MCP servers
     """
-    enabled_servers = get_enabled_servers()
-    logger.info(f"Setting up {len(enabled_servers)} MCP servers: {', '.join(enabled_servers)}")
+    logger.info("Setting up MCP servers...")
     
-    # Initialize each server with its configuration
-    for server_name in enabled_servers:
-        server_config = get_mcp_server_config(server_name)
-        
-        if server_name == "trade_analysis":
-            init_trade_analysis(server_config)
-        elif server_name == "market_data":
-            init_market_data(server_config)
-        elif server_name == "statistics":
-            init_statistics(server_config)
-        elif server_name == "alerts":
-            init_alerts(server_config)
-        elif server_name == "ai":
-            init_ai(server_config)
-        else:
-            logger.warning(f"Unknown server type: {server_name}")
+    # Import server modules dynamically to avoid circular imports
+    from .servers import (
+        ai_server,
+        market_data_server,
+        statistics_server,
+        trade_analysis_server,
+        alert_server,
+        sentiment_analysis
+    )
     
-    logger.info("All MCP servers initialized")
+    # Map server name to module
+    server_modules = {
+        "ai_server": ai_server,
+        "market_data_server": market_data_server,
+        "statistics_server": statistics_server,
+        "trade_analysis_server": trade_analysis_server,
+        "alert_server": alert_server,
+        "sentiment_analysis": sentiment_analysis
+    }
+    
+    # Start enabled servers
+    for server_name in get_enabled_servers():
+        if server_name in server_modules:
+            try:
+                logger.info(f"Starting MCP server: {server_name}")
+                server_config = get_server_config(server_name)
+                
+                # Start server
+                server_instance = server_modules[server_name].start_server(server_config)
+                
+                # Update server state
+                SERVER_STATES[server_name]["running"] = True
+                SERVER_STATES[server_name]["instance"] = server_instance
+                
+                logger.info(f"MCP server started: {server_name}")
+            except Exception as e:
+                logger.error(f"Failed to start MCP server '{server_name}': {str(e)}")
+                SERVER_STATES[server_name]["running"] = False
+                SERVER_STATES[server_name]["instance"] = None
+    
+    logger.info("MCP servers setup complete")
 
-# TODO: Add MCP service discovery
-# TODO: Add MCP authentication and security
-# TODO: Add MCP monitoring and health checks
+def shutdown_mcp_servers() -> None:
+    """
+    Shut down all running MCP servers
+    """
+    logger.info("Shutting down MCP servers...")
+    
+    for server_name, state in SERVER_STATES.items():
+        if state["running"] and state["instance"]:
+            try:
+                logger.info(f"Stopping MCP server: {server_name}")
+                state["instance"].stop()
+                state["running"] = False
+                state["instance"] = None
+                logger.info(f"MCP server stopped: {server_name}")
+            except Exception as e:
+                logger.error(f"Failed to stop MCP server '{server_name}': {str(e)}")
+    
+    logger.info("MCP servers shutdown complete")
+
+def is_server_running(server_name: str) -> bool:
+    """
+    Check if a specific MCP server is running
+    
+    Args:
+        server_name (str): Name of the server
+        
+    Returns:
+        bool: True if server is running, False otherwise
+    """
+    if server_name in SERVER_STATES:
+        return SERVER_STATES[server_name]["running"]
+    
+    logger.error(f"Server '{server_name}' not found in SERVER_STATES")
+    return False
