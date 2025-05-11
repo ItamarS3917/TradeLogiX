@@ -10,7 +10,7 @@ from datetime import date
 from ...db.database import get_db
 
 # Import services
-from ...services.trade_service import TradeService
+from ...services.trade_service import *
 
 # Import schemas (will implement later)
 from ...db.schemas import TradeCreate, TradeResponse, TradeUpdate, TradeStatistics

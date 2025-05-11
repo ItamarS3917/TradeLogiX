@@ -25,10 +25,10 @@ def main():
     
     # Install critical packages first
     critical_packages = [
-        "pydantic==1.9.0",
-        "fastapi==0.75.0",
-        "uvicorn==0.17.6",
-        "sqlalchemy==1.4.36"
+        "pydantic==2.6.1",
+        "fastapi==0.109.2",
+        "uvicorn==0.27.1",
+        "sqlalchemy==2.0.27"
     ]
     
     for package in critical_packages:
@@ -41,9 +41,9 @@ def main():
     # Try direct installation of problematic packages
     problem_packages = [
         # Alternative packages - newer or older versions that might be compatible
-        "aiohttp>=3.7.0,<3.9.0",
-        "pillow==9.0.0",
-        "python-multipart>=0.0.5"
+        "aiohttp==3.9.3",
+        "pillow==10.2.0",
+        "python-multipart==0.0.9"
     ]
     
     for package in problem_packages:
@@ -55,13 +55,13 @@ def main():
     
     # Install the rest of the packages
     other_packages = [
-        "alembic==1.7.7",
+        "alembic==1.13.1",
         "python-jose==3.3.0",
         "passlib==1.7.4",
-        "bcrypt==3.2.0",
-        "requests==2.27.1",
+        "bcrypt==4.1.2",
+        "requests==2.31.0",
         "python-dateutil==2.8.2",
-        "aiofiles==0.8.0"
+        "aiofiles==23.2.1"
     ]
     
     for package in other_packages:
@@ -73,12 +73,12 @@ def main():
     
     # Install development packages
     dev_packages = [
-        "pytest==7.1.1",
-        "pytest-asyncio==0.18.3",
-        "httpx==0.22.0",
-        "black==22.3.0",
-        "isort==5.10.1",
-        "flake8==4.0.1"
+        "pytest==7.4.0",
+        "pytest-asyncio==0.23.4",
+        "httpx==0.27.0",
+        "black==24.1.1",
+        "isort==5.13.2",
+        "flake8==7.0.0"
     ]
     
     for package in dev_packages:

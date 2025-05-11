@@ -1,188 +1,235 @@
 # File: backend/db/repository.py
-# Purpose: Generic repository class for database operations
+# Purpose: Generic repository pattern implementation for database operations
 
-import logging
-from typing import Generic, TypeVar, Type, List, Optional, Dict, Any, Union
+from typing import Generic, Type, TypeVar, List, Optional, Any, Dict
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel
+from fastapi.encoders import jsonable_encoder
 
 from .database import Base
+from ..models.trade import Trade
+from ..models.user import User
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Define generic types for models and schemas
+ModelType = TypeVar("ModelType", bound=Base)
+CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
-# Type variables
-T = TypeVar('T', bound=Base)  # SQLAlchemy model
-C = TypeVar('C', bound=BaseModel)  # Create schema
-U = TypeVar('U', bound=BaseModel)  # Update schema
-
-class Repository(Generic[T, C, U]):
+class Repository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """
     Generic repository for database operations
     
-    Provides CRUD operations for a specific model
+    Provides CRUD operations for a SQLAlchemy model
     """
     
-    def __init__(self, model: Type[T], db: Session):
+    def __init__(self, model: Type[ModelType], db: Session):
         """
         Initialize repository
         
         Args:
-            model (Type[T]): SQLAlchemy model class
+            model (Type[ModelType]): SQLAlchemy model class
             db (Session): Database session
         """
         self.model = model
         self.db = db
     
-    def create(self, schema: C) -> T:
+    def get_by_id(self, id: Any) -> Optional[ModelType]:
         """
-        Create a new record
+        Get model by ID
         
         Args:
-            schema (C): Create schema
-            
-        Returns:
-            T: Created model instance
-            
-        Raises:
-            Exception: If database operation fails
-        """
-        try:
-            # Convert schema to dict
-            data = schema.dict()
-            
-            # Create model instance
-            db_item = self.model(**data)
-            
-            # Add to session
-            self.db.add(db_item)
-            self.db.commit()
-            self.db.refresh(db_item)
-            
-            return db_item
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Error creating {self.model.__name__}: {str(e)}")
-            raise Exception(f"Failed to create {self.model.__name__}: {str(e)}")
-    
-    def get_by_id(self, id: int) -> Optional[T]:
-        """
-        Get record by ID
+            id (Any): Model ID
         
-        Args:
-            id (int): Record ID
-            
         Returns:
-            Optional[T]: Model instance if found, None otherwise
+            Optional[ModelType]: Model instance if found, None otherwise
         """
         return self.db.query(self.model).filter(self.model.id == id).first()
     
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[T]:
+    def get_all(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
         """
-        Get all records with pagination
+        Get all models with pagination
         
         Args:
             skip (int, optional): Number of records to skip. Defaults to 0.
             limit (int, optional): Maximum number of records to return. Defaults to 100.
-            
+        
         Returns:
-            List[T]: List of model instances
+            List[ModelType]: List of model instances
         """
         return self.db.query(self.model).offset(skip).limit(limit).all()
     
-    def update(self, id: int, schema: U) -> Optional[T]:
+    def create(self, obj_in: CreateSchemaType) -> ModelType:
         """
-        Update record by ID
+        Create a new model instance
         
         Args:
-            id (int): Record ID
-            schema (U): Update schema
-            
+            obj_in (CreateSchemaType): Model creation schema
+        
         Returns:
-            Optional[T]: Updated model instance if found, None otherwise
-            
-        Raises:
-            Exception: If database operation fails
+            ModelType: Created model instance
         """
-        try:
-            # Get existing record
-            db_item = self.get_by_id(id)
-            
-            if not db_item:
-                return None
-            
-            # Convert schema to dict, excluding None values
-            update_data = schema.dict(exclude_unset=True)
-            
-            # Update fields
-            for key, value in update_data.items():
-                setattr(db_item, key, value)
-            
-            # Commit changes
-            self.db.commit()
-            self.db.refresh(db_item)
-            
-            return db_item
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Error updating {self.model.__name__} with ID {id}: {str(e)}")
-            raise Exception(f"Failed to update {self.model.__name__}: {str(e)}")
+        # Convert Pydantic model to dict
+        obj_in_data = jsonable_encoder(obj_in)
+        
+        # Create model instance
+        db_obj = self.model(**obj_in_data)
+        
+        # Add to database
+        self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        
+        return db_obj
     
-    def delete(self, id: int) -> bool:
+    def update(self, id: Any, obj_in: UpdateSchemaType) -> Optional[ModelType]:
         """
-        Delete record by ID
+        Update model instance
         
         Args:
-            id (int): Record ID
-            
+            id (Any): Model ID
+            obj_in (UpdateSchemaType): Model update schema
+        
         Returns:
-            bool: True if record was deleted, False otherwise
-            
-        Raises:
-            Exception: If database operation fails
+            Optional[ModelType]: Updated model instance if found, None otherwise
         """
-        try:
-            # Get existing record
-            db_item = self.get_by_id(id)
+        # Get model instance
+        db_obj = self.get_by_id(id)
+        
+        if db_obj is None:
+            return None
+        
+        # Convert Pydantic model to dict
+        obj_in_data = jsonable_encoder(obj_in)
+        
+        # Update model instance
+        for field, value in obj_in_data.items():
+            # Skip fields with None values
+            if value is None:
+                continue
             
-            if not db_item:
-                return False
-            
-            # Delete record
-            self.db.delete(db_item)
-            self.db.commit()
-            
-            return True
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Error deleting {self.model.__name__} with ID {id}: {str(e)}")
-            raise Exception(f"Failed to delete {self.model.__name__}: {str(e)}")
+            # Set field value
+            setattr(db_obj, field, value)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(db_obj)
+        
+        return db_obj
     
-    def filter_by(self, **kwargs) -> List[T]:
+    def delete(self, id: Any) -> bool:
         """
-        Filter records by attributes
+        Delete model instance
         
         Args:
-            **kwargs: Filter criteria as keyword arguments
-            
+            id (Any): Model ID
+        
         Returns:
-            List[T]: List of matching model instances
+            bool: True if model was deleted, False otherwise
         """
-        query = self.db.query(self.model)
+        # Get model instance
+        db_obj = self.get_by_id(id)
         
-        for key, value in kwargs.items():
-            if hasattr(self.model, key) and value is not None:
-                query = query.filter(getattr(self.model, key) == value)
+        if db_obj is None:
+            return False
         
-        return query.all()
+        # Delete model instance
+        self.db.delete(db_obj)
+        self.db.commit()
+        
+        return True
     
     def count(self) -> int:
         """
-        Count total records
+        Count all models
         
         Returns:
-            int: Total number of records
+            int: Number of models
         """
         return self.db.query(self.model).count()
+    
+    def exists(self, id: Any) -> bool:
+        """
+        Check if model exists
+        
+        Args:
+            id (Any): Model ID
+        
+        Returns:
+            bool: True if model exists, False otherwise
+        """
+        return self.db.query(self.model).filter(self.model.id == id).first() is not None
+
+
+# Specific repository implementations
+class TradeRepository(Repository[Trade, CreateSchemaType, UpdateSchemaType]):
+    """
+    Repository for Trade model
+    
+    Provides CRUD operations for the Trade model with any additional Trade-specific methods
+    """
+    
+    def __init__(self, db: Session):
+        super().__init__(Trade, db)
+    
+    def get_by_user_id(self, user_id: int, skip: int = 0, limit: int = 100) -> List[Trade]:
+        """
+        Get trades by user ID
+        
+        Args:
+            user_id (int): User ID
+            skip (int, optional): Number of records to skip. Defaults to 0.
+            limit (int, optional): Maximum number of records to return. Defaults to 100.
+        
+        Returns:
+            List[Trade]: List of trades for the user
+        """
+        return self.db.query(self.model).filter(self.model.user_id == user_id).offset(skip).limit(limit).all()
+    
+    def get_by_symbol(self, symbol: str, skip: int = 0, limit: int = 100) -> List[Trade]:
+        """
+        Get trades by symbol
+        
+        Args:
+            symbol (str): Trading symbol
+            skip (int, optional): Number of records to skip. Defaults to 0.
+            limit (int, optional): Maximum number of records to return. Defaults to 100.
+        
+        Returns:
+            List[Trade]: List of trades for the symbol
+        """
+        return self.db.query(self.model).filter(self.model.symbol == symbol).offset(skip).limit(limit).all()
+
+
+class UserRepository(Repository[User, CreateSchemaType, UpdateSchemaType]):
+    """
+    Repository for User model
+    
+    Provides CRUD operations for the User model with any additional User-specific methods
+    """
+    
+    def __init__(self, db: Session):
+        super().__init__(User, db)
+    
+    def get_by_email(self, email: str) -> Optional[User]:
+        """
+        Get user by email
+        
+        Args:
+            email (str): User email
+        
+        Returns:
+            Optional[User]: User instance if found, None otherwise
+        """
+        return self.db.query(self.model).filter(self.model.email == email).first()
+    
+    def get_by_username(self, username: str) -> Optional[User]:
+        """
+        Get user by username
+        
+        Args:
+            username (str): Username
+        
+        Returns:
+            Optional[User]: User instance if found, None otherwise
+        """
+        return self.db.query(self.model).filter(self.model.username == username).first()

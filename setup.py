@@ -21,7 +21,7 @@ def check_python_version():
         sys.exit(1)
 
 def check_node_version():
-    """Check if Node.js is installed and version is 16 or higher"""
+    """Check if Node.js is installed and version is 20 or higher"""
     try:
         node_version = subprocess.check_output(["node", "--version"]).decode("utf-8").strip()
         # Remove 'v' prefix and split by '.'
@@ -29,8 +29,8 @@ def check_node_version():
         
         major_version = int(version_parts[0])
         
-        if major_version < 16:
-            print(f"Error: Node.js 16 or higher is required")
+        if major_version < 20:
+            print(f"Error: Node.js 20 or higher is required")
             print(f"Current Node.js version: {node_version}")
             sys.exit(1)
         

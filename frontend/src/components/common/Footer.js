@@ -1,26 +1,30 @@
 import React from 'react';
+import { Box, Typography, Link, Container } from '@mui/material';
 
 const Footer = () => {
   return (
-    <footer className="footer">
-      <div className="footer-content">
-        <div className="footer-left">
-          <p>© 2025 Trading Journal App</p>
-        </div>
-        
-        <div className="footer-center">
-          <p>
-            Built with <i className="fas fa-heart"></i> using React, FastAPI, and MCP
-          </p>
-        </div>
-        
-        <div className="footer-right">
-          <a href="#" className="footer-link">Terms</a>
-          <a href="#" className="footer-link">Privacy</a>
-          <a href="#" className="footer-link">Support</a>
-        </div>
-      </div>
-    </footer>
+    <Box
+      component="footer"
+      sx={{
+        py: 2,
+        px: 2,
+        mt: 'auto',
+        backgroundColor: 'white',
+        borderTop: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Container maxWidth="lg">
+        <Typography variant="body2" color="text.secondary" align="center">
+          {'Copyright © '}
+          <Link color="inherit" href="#">
+            Trading Journal App
+          </Link>{' '}
+          {new Date().getFullYear()}
+          {'. Built with MCP Technology.'}
+        </Typography>
+      </Container>
+    </Box>
   );
 };
 

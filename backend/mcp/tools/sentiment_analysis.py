@@ -87,6 +87,43 @@ EMOTION_CATEGORIES = {
     'pride': ['proud', 'accomplished', 'satisfied', 'fulfilled', 'content', 'pleased']
 }
 
+def analyze_sentiment(text: str) -> float:
+    """
+    Analyze the sentiment of text and return a sentiment score
+    
+    Args:
+        text (str): Text to analyze
+        
+    Returns:
+        float: Sentiment score (-1.0 to 1.0)
+    """
+    try:
+        if not text:
+            return 0.0
+        
+        # Tokenize text
+        words = re.findall(r'\b\w+\b', text.lower())
+        
+        # Calculate positive and negative scores
+        positive_score = 0
+        negative_score = 0
+        
+        for word in words:
+            positive_score += POSITIVE_WORDS.get(word, 0)
+            negative_score += NEGATIVE_WORDS.get(word, 0)
+        
+        # Calculate sentiment score (-1.0 to 1.0)
+        total = positive_score + negative_score
+        if total == 0:
+            return 0.0
+        
+        sentiment_score = (positive_score - negative_score) / (positive_score + negative_score)
+        return round(sentiment_score, 2)
+    
+    except Exception as e:
+        logger.error(f"Error analyzing sentiment: {str(e)}")
+        return 0.0
+
 def analyze_text_sentiment(text: str) -> Dict[str, Any]:
     """
     Analyze sentiment of text content
