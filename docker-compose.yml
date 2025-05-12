@@ -16,12 +16,13 @@ services:
       context: ./frontend-new
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend-new:/app
-      - /app/node_modules
+      - ./frontend-new/src:/app/src  # Only mount the src directory
+      - ./frontend-new/public:/app/public  # Mount public directory if needed
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
     restart: always

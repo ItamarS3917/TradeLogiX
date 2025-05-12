@@ -10,8 +10,8 @@ from .routes import users, trades, plans, journals, statistics, alerts, tradesag
 # Import database
 from ..db.database import get_db, initialize_db
 
-# Import MCP configuration
-from ..mcp.mcp_config import MCPConfig, setup_mcp_servers
+# Import MCP integration
+from ..mcp.mcp_integration import initialize_mcp, get_mcp_integration
 
 # Set up import to avoid circular dependencies
 import sys
@@ -40,9 +40,13 @@ async def startup_event():
     # Initialize database
     initialize_db()
     
-    # Setup MCP servers
-    mcp_servers = setup_mcp_servers()
-    print(f"Initialized {len(mcp_servers)} MCP servers")
+    # Initialize MCP integration
+    mcp = initialize_mcp(app)
+    
+    # Start MCP servers
+    mcp.start_servers()
+    
+    print(f"Initialized and started MCP integration with {len(mcp.servers)} servers")
 
 # Include routes
 app.include_router(users.router, prefix="/api/users", tags=["users"])
@@ -66,6 +70,13 @@ async def health_check():
 # API info endpoint
 @app.get("/api/info")
 async def api_info():
+    # Get MCP integration status
+    mcp = get_mcp_integration()
+    mcp_status = {
+        "status": "active" if mcp.initialized else "inactive",
+        "servers": [name for name in mcp.servers]
+    }
+    
     return {
         "name": "Trading Journal API",
         "version": "0.1.0",
@@ -86,9 +97,19 @@ async def api_info():
             "journals": "/api/journals",
             "statistics": "/api/statistics",
             "alerts": "/api/alerts",
-            "tradesage": "/api/tradesage"
-        }
+            "tradesage": "/api/tradesage",
+            "mcp": "/api/mcp"
+        },
+        "mcp": mcp_status
     }
+
+# Shutdown event to stop MCP servers
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Stop MCP servers
+    mcp = get_mcp_integration()
+    mcp.stop_servers()
+    print("Stopped MCP servers")
 
 # TODO: Add authentication middleware
 # TODO: Add error handling middleware

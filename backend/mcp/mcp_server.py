@@ -28,7 +28,7 @@ class MCPServer(ABC):
         """
         self.config = config
         self.host = config.get("host", "localhost")
-        self.port = config.get("port", 5000)
+        self.port = config.get("port", self._get_default_port())
         self.name = self.__class__.__name__
         
         # Create FastAPI app
@@ -58,6 +58,29 @@ class MCPServer(ABC):
         self.server_thread = None
         self.is_running = False
     
+    def _get_default_port(self) -> int:
+        """
+        Get default port based on server class name to avoid conflicts
+        
+        Returns:
+            int: Default port number
+        """
+        class_name = self.__class__.__name__
+        
+        # Map server names to default ports
+        port_map = {
+            "StatisticsMCPServer": 8001,
+            "MarketDataServer": 8002,
+            "TradeAnalysisServer": 8003,
+            "AIServer": 8004,
+            "AlertServer": 8005,
+            "SentimentAnalysisServer": 8006,
+            "TradeSageMCPServer": 8007
+        }
+        
+        # Return mapped port or fallback to 9000
+        return port_map.get(class_name, 9000)
+        
     def _setup_routes(self):
         """Set up API routes"""
         # Health check endpoint

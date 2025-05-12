@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import { TradesPage } from './pages/Trades';
 import { PlanningPage } from './pages/Planning';
 import StatisticsPage from './pages/Statistics';
+import TradeSageAssistant from './pages/TradeSage/TradeSageAssistant';
 import NotFound from './pages/NotFound';
 
 // Create theme
@@ -49,6 +50,7 @@ function App() {
                       <Route path="/trades" element={<TradesPage />} />
                       <Route path="/planning" element={<PlanningPage />} />
                       <Route path="/statistics" element={<StatisticsPage />} />
+                      <Route path="/tradesage" element={<TradeSageAssistant />} />
                       {/* Add other protected routes here */}
                       <Route path="*" element={<NotFound />} />
                     </Route>

@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from .database import Base
 from ..models.trade import Trade
 from ..models.user import User
+from ..models.journal import Journal
 
 # Define generic types for models and schemas
 ModelType = TypeVar("ModelType", bound=Base)
@@ -198,6 +199,27 @@ class TradeRepository(Repository[Trade, CreateSchemaType, UpdateSchemaType]):
             List[Trade]: List of trades for the symbol
         """
         return self.db.query(self.model).filter(self.model.symbol == symbol).offset(skip).limit(limit).all()
+    
+    def get_by_user(self, user_id: int, date_range: Optional[Dict[str, Any]] = None) -> List[Trade]:
+        """
+        Get trades by user ID with optional date range filtering
+        
+        Args:
+            user_id (int): User ID
+            date_range (Optional[Dict[str, Any]], optional): Date range with 'start' and 'end' keys. Defaults to None.
+        
+        Returns:
+            List[Trade]: List of trades for the user
+        """
+        query = self.db.query(self.model).filter(self.model.user_id == user_id)
+        
+        if date_range:
+            if date_range.get('start'):
+                query = query.filter(self.model.entry_time >= date_range['start'])
+            if date_range.get('end'):
+                query = query.filter(self.model.entry_time <= date_range['end'])
+        
+        return query.all()
 
 
 class UserRepository(Repository[User, CreateSchemaType, UpdateSchemaType]):
@@ -233,3 +255,50 @@ class UserRepository(Repository[User, CreateSchemaType, UpdateSchemaType]):
             Optional[User]: User instance if found, None otherwise
         """
         return self.db.query(self.model).filter(self.model.username == username).first()
+
+
+class JournalRepository(Repository[Journal, CreateSchemaType, UpdateSchemaType]):
+    """
+    Repository for Journal model
+    
+    Provides CRUD operations for the Journal model with any additional Journal-specific methods
+    """
+    
+    def __init__(self, db: Session):
+        super().__init__(Journal, db)
+    
+    def get_by_user_id(self, user_id: int, skip: int = 0, limit: int = 100) -> List[Journal]:
+        """
+        Get journals by user ID
+        
+        Args:
+            user_id (int): User ID
+            skip (int, optional): Number of records to skip. Defaults to 0.
+            limit (int, optional): Maximum number of records to return. Defaults to 100.
+        
+        Returns:
+            List[Journal]: List of journals for the user
+        """
+        return self.db.query(self.model).filter(self.model.user_id == user_id).offset(skip).limit(limit).all()
+    
+    def get_by_date_range(self, user_id: int, start_date: Optional[Any] = None, end_date: Optional[Any] = None) -> List[Journal]:
+        """
+        Get journals by date range for a user
+        
+        Args:
+            user_id (int): User ID
+            start_date (Optional[Any], optional): Start date. Defaults to None.
+            end_date (Optional[Any], optional): End date. Defaults to None.
+        
+        Returns:
+            List[Journal]: List of journals in the date range
+        """
+        query = self.db.query(self.model).filter(self.model.user_id == user_id)
+        
+        if start_date:
+            query = query.filter(self.model.date >= start_date)
+        
+        if end_date:
+            query = query.filter(self.model.date <= end_date)
+        
+        return query.all()

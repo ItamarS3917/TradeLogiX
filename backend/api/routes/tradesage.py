@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from ...services.tradesage_service import TradeSageService
 from ...services.trade_service import TradeService
+from ...mcp.tools.pattern_recognition import detect_mcp_complex_patterns
+from ...mcp.mcp_integration import get_mcp
 
 # Pydantic models for request/response
 class AnalysisRequest(BaseModel):
@@ -18,12 +20,15 @@ class AnalysisRequest(BaseModel):
     user_id: int
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    use_mcp: Optional[bool] = True  # Use MCP enhanced analysis by default
     
 class AnalysisResponse(BaseModel):
     """Response model for trading pattern analysis"""
     insights: List[Dict[str, Any]]
     recommendations: List[str]
     summary: str
+    patterns: Optional[List[Dict[str, Any]]] = None  # MCP-detected patterns
+    mcp_enhanced: Optional[bool] = False
 
 class QuestionRequest(BaseModel):
     """Request model for asking TradeSage a question"""
@@ -42,6 +47,22 @@ class ImprovementPlanResponse(BaseModel):
     weaknesses: List[str]
     plan: Dict[str, List[Dict[str, Any]]]
     timeline: str
+    mcp_enhanced: Optional[bool] = False
+    patterns: Optional[List[Dict[str, Any]]] = None  # Complex patterns detected by MCP
+
+# Create complex patterns model
+class ComplexPatternsRequest(BaseModel):
+    """Request model for MCP complex pattern analysis"""
+    user_id: int
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    include_market_data: Optional[bool] = False
+
+class ComplexPatternsResponse(BaseModel):
+    """Response model for MCP complex pattern analysis"""
+    patterns: List[Dict[str, Any]]
+    insights: List[str]
+    mcp_version: str
 
 # Create the router
 router = APIRouter()
@@ -49,7 +70,8 @@ router = APIRouter()
 @router.post("/analyze-patterns", response_model=AnalysisResponse)
 async def analyze_trading_patterns(
     request: AnalysisRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    mcp = Depends(get_mcp)
 ):
     """
     Analyze trading patterns for insights and recommendations
@@ -83,10 +105,51 @@ async def analyze_trading_patterns(
                 detail="No trading data available for analysis"
             )
         
+        # Add MCP enhanced patterns if requested
+        mcp_patterns = []
+        if request.use_mcp:
+            # Get trades for MCP analysis
+            trade_service = TradeService(db)
+            trades = trade_service.get_trades(
+                user_id=request.user_id,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            # Convert SQLAlchemy models to dicts for pattern recognition
+            trade_dicts = []
+            for trade in trades:
+                trade_dict = {
+                    "id": trade.id,
+                    "user_id": trade.user_id,
+                    "entry_time": trade.entry_time,
+                    "exit_time": trade.exit_time,
+                    "symbol": trade.symbol,
+                    "setup_type": trade.setup_type,
+                    "outcome": trade.outcome,
+                    "profit_loss": trade.profit_loss,
+                    "planned_risk_reward": getattr(trade, "planned_risk_reward", None),
+                    "actual_risk_reward": getattr(trade, "actual_risk_reward", None),
+                    "emotional_state": getattr(trade, "emotional_state", None),
+                    "plan_adherence": getattr(trade, "plan_adherence", None),
+                }
+                trade_dicts.append(trade_dict)
+            
+            # Use MCP enhanced pattern recognition
+            if trade_dicts and len(trade_dicts) > 5:  # Need at least 5 trades for patterns
+                mcp_patterns = detect_mcp_complex_patterns(trade_dicts)
+                
+                # Add any MCP-identified recommendations to the response
+                for pattern in mcp_patterns:
+                    if "recommendation" in pattern:
+                        analysis_result.setdefault("recommendations", []).append(pattern["recommendation"])
+        
         return AnalysisResponse(
             insights=analysis_result.get("insights", []),
             recommendations=analysis_result.get("recommendations", []),
-            summary=analysis_result.get("summary", "No summary available.")
+            summary=analysis_result.get("summary", "No summary available."),
+            patterns=mcp_patterns,
+            mcp_enhanced=bool(mcp_patterns)
         )
     except Exception as e:
         raise HTTPException(
@@ -164,7 +227,9 @@ async def get_performance_insights(
 @router.get("/improvement-plan/{user_id}", response_model=ImprovementPlanResponse)
 async def get_improvement_plan(
     user_id: int,
-    db: Session = Depends(get_db)
+    use_mcp: bool = True,
+    db: Session = Depends(get_db),
+    mcp = Depends(get_mcp)
 ):
     """
     Generate an improvement plan for a user
@@ -181,16 +246,148 @@ async def get_improvement_plan(
                 detail="Unable to generate improvement plan due to insufficient data"
             )
         
+        # Add MCP enhanced patterns if requested
+        mcp_patterns = []
+        if use_mcp:
+            # Get trades for MCP analysis (last 90 days by default)
+            trade_service = TradeService(db)
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=90)
+            
+            trades = trade_service.get_trades(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            # Convert SQLAlchemy models to dicts for pattern recognition
+            trade_dicts = []
+            for trade in trades:
+                trade_dict = {
+                    "id": trade.id,
+                    "user_id": trade.user_id,
+                    "entry_time": trade.entry_time,
+                    "exit_time": trade.exit_time,
+                    "symbol": trade.symbol,
+                    "setup_type": trade.setup_type,
+                    "outcome": trade.outcome,
+                    "profit_loss": trade.profit_loss,
+                    "planned_risk_reward": getattr(trade, "planned_risk_reward", None),
+                    "actual_risk_reward": getattr(trade, "actual_risk_reward", None),
+                    "emotional_state": getattr(trade, "emotional_state", None),
+                    "plan_adherence": getattr(trade, "plan_adherence", None),
+                }
+                trade_dicts.append(trade_dict)
+            
+            # Use MCP enhanced pattern recognition
+            if trade_dicts and len(trade_dicts) > 5:  # Need at least 5 trades for patterns
+                mcp_patterns = detect_mcp_complex_patterns(trade_dicts)
+                
+                # Add any MCP-identified recommendations to the plan
+                for pattern in mcp_patterns:
+                    if "recommendation" in pattern:
+                        plan.setdefault("strengths", []).append(pattern["name"] + ": " + pattern["description"])
+        
         return ImprovementPlanResponse(
             strengths=plan.get("strengths", []),
             weaknesses=plan.get("weaknesses", []),
             plan=plan.get("plan", {"shortTerm": [], "mediumTerm": [], "longTerm": []}),
-            timeline=plan.get("timeline", "No timeline available.")
+            timeline=plan.get("timeline", "No timeline available."),
+            mcp_enhanced=bool(mcp_patterns),
+            patterns=mcp_patterns
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Plan generation failed: {str(e)}"
+        )
+
+@router.post("/complex-patterns", response_model=ComplexPatternsResponse)
+async def analyze_complex_patterns(
+    request: ComplexPatternsRequest,
+    db: Session = Depends(get_db),
+    mcp = Depends(get_mcp)
+):
+    """
+    Analyze trade data using MCP's advanced pattern recognition
+    """
+    try:
+        # Get trades for MCP analysis
+        trade_service = TradeService(db)
+        
+        # Set default date range if not provided
+        if not request.start_date and not request.end_date:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=90)  # Default to last 90 days
+        else:
+            start_date = request.start_date
+            end_date = request.end_date or datetime.now().date()
+        
+        trades = trade_service.get_trades(
+            user_id=request.user_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        if not trades:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No trading data available for analysis"
+            )
+        
+        # Convert SQLAlchemy models to dicts for pattern recognition
+        trade_dicts = []
+        for trade in trades:
+            trade_dict = {
+                "id": trade.id,
+                "user_id": trade.user_id,
+                "entry_time": trade.entry_time,
+                "exit_time": trade.exit_time,
+                "symbol": trade.symbol,
+                "setup_type": trade.setup_type,
+                "outcome": trade.outcome,
+                "profit_loss": trade.profit_loss,
+                "planned_risk_reward": getattr(trade, "planned_risk_reward", None),
+                "actual_risk_reward": getattr(trade, "actual_risk_reward", None),
+                "emotional_state": getattr(trade, "emotional_state", None),
+                "plan_adherence": getattr(trade, "plan_adherence", None),
+            }
+            trade_dicts.append(trade_dict)
+        
+        # Get market data if requested
+        market_data = None
+        if request.include_market_data:
+            # This would fetch market data from a market data service
+            # For now, we'll use a placeholder
+            market_data = {
+                "market_conditions": "placeholder"
+            }
+        
+        # Use MCP enhanced pattern recognition
+        patterns = detect_mcp_complex_patterns(trade_dicts, market_data)
+        
+        if not patterns:
+            return ComplexPatternsResponse(
+                patterns=[],
+                insights=["No significant patterns detected in your trading data."],
+                mcp_version="1.0.0"
+            )
+        
+        # Extract insights from patterns
+        insights = []
+        for pattern in patterns:
+            if pattern.get("confidence", 0) > 0.7:  # Only include high-confidence patterns
+                insights.append(f"{pattern['name']}: {pattern['description']}")
+        
+        return ComplexPatternsResponse(
+            patterns=patterns,
+            insights=insights or ["Patterns detected but no strong insights available."],
+            mcp_version="1.0.0"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Complex pattern analysis failed: {str(e)}"
         )
 
 @router.get("/compare-trades/{user_id}", response_model=Dict[str, Any])

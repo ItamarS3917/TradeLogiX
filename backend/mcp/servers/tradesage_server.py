@@ -10,10 +10,12 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from ..mcp_server import MCPServer
 from ..tools.pattern_recognition import identify_trade_patterns
 from ..tools.sentiment_analysis import analyze_text_sentiment, analyze_emotional_impact
+from ..tools.ai_integration import get_claude_client
 from ...db.database import get_db
-from ...services.trade_service import TradeService
-from ...services.journal_service import JournalService
-from ...services.plan_service import PlanService
+# Avoid circular import by importing services when needed, not at module level
+# from ...services.trade_service import TradeService
+# from ...services.journal_service import JournalService
+# from ...services.plan_service import PlanService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -95,6 +97,29 @@ class TradeSageMCPServer(MCPServer):
                     summary += f"We've generated {len(recommendations)} recommendations to help improve your trading."
                 else:
                     summary = "No significant patterns were found in your trading data. Add more trades or expand the date range for more insights."
+                
+                # Use Claude to analyze trading patterns if available
+                try:
+                    claude_client = await get_claude_client()
+                    claude_analysis = await claude_client.analyze_trading_patterns(trades)
+                    
+                    # Add Claude insights to patterns
+                    claude_insights = claude_analysis.get("insights", [])
+                    for insight in claude_insights:
+                        if insight not in patterns:
+                            patterns.append(insight)
+                    
+                    # Add Claude recommendations
+                    claude_recommendations = claude_analysis.get("recommendations", [])
+                    for recommendation in claude_recommendations:
+                        if recommendation not in recommendations:
+                            recommendations.append(recommendation)
+                    
+                    # Use Claude summary if available
+                    if claude_analysis.get("summary"):
+                        summary = claude_analysis.get("summary")
+                except Exception as e:
+                    logger.warning(f"Error using Claude for pattern analysis: {str(e)}")
                 
                 return {
                     "patterns": patterns,
@@ -191,6 +216,25 @@ class TradeSageMCPServer(MCPServer):
                     summary += f"Your dominant emotions are {', '.join(emotional_trends['dominant_emotions'][:2])}. "
                 
                 summary += f"We've generated {len(recommendations)} recommendations based on your emotional patterns."
+                
+                # Use Claude to analyze journal entries if available
+                try:
+                    claude_client = await get_claude_client()
+                    claude_analysis = await claude_client.analyze_journal_entries(journals)
+                    
+                    # Add Claude insights
+                    claude_insights = claude_analysis.get("insights", [])
+                    for insight in claude_insights:
+                        if insight not in recommendations:
+                            recommendations.append(insight)
+                    
+                    # Add Claude recommendations
+                    claude_recommendations = claude_analysis.get("recommendations", [])
+                    for recommendation in claude_recommendations:
+                        if recommendation not in recommendations:
+                            recommendations.append(recommendation)
+                except Exception as e:
+                    logger.warning(f"Error using Claude for journal analysis: {str(e)}")
                 
                 return {
                     "sentiment_results": sentiment_results,
@@ -351,6 +395,45 @@ class TradeSageMCPServer(MCPServer):
                 
                 # Generate timeline
                 timeline = "This improvement plan is designed to be implemented over the next 6 months, with regular reviews and adjustments based on your performance. Focus first on the short-term actions to build momentum."
+                
+                # Use Claude to generate improvement plan if available
+                try:
+                    claude_client = await get_claude_client()
+                    claude_plan = await claude_client.generate_improvement_plan(trades, journals)
+                    
+                    # Combine with existing plan
+                    strengths.extend([s for s in claude_plan.get("strengths", []) if s not in strengths])
+                    weaknesses.extend([w for w in claude_plan.get("weaknesses", []) if w not in weaknesses])
+                    
+                    # Add Claude plan actions
+                    claude_plan_actions = claude_plan.get("plan", {})
+                    
+                    # Short-term actions
+                    claude_short_term = claude_plan_actions.get("shortTerm", [])
+                    for action in claude_short_term:
+                        existing_actions = [a.get("action") for a in plan["shortTerm"]]
+                        if action.get("action") not in existing_actions:
+                            plan["shortTerm"].append(action)
+                    
+                    # Medium-term actions
+                    claude_medium_term = claude_plan_actions.get("mediumTerm", [])
+                    for action in claude_medium_term:
+                        existing_actions = [a.get("action") for a in plan["mediumTerm"]]
+                        if action.get("action") not in existing_actions:
+                            plan["mediumTerm"].append(action)
+                    
+                    # Long-term actions
+                    claude_long_term = claude_plan_actions.get("longTerm", [])
+                    for action in claude_long_term:
+                        existing_actions = [a.get("action") for a in plan["longTerm"]]
+                        if action.get("action") not in existing_actions:
+                            plan["longTerm"].append(action)
+                    
+                    # Use Claude timeline if available
+                    if claude_plan.get("timeline"):
+                        timeline = claude_plan.get("timeline")
+                except Exception as e:
+                    logger.warning(f"Error using Claude for generating improvement plan: {str(e)}")
                 
                 return {
                     "strengths": strengths,
@@ -587,6 +670,27 @@ class TradeSageMCPServer(MCPServer):
                     # Generic response for unrecognized questions
                     answer = "I don't have enough context to answer that specific question. Try asking about your win rate, best setups, losing patterns, or how to improve your trading. You can also check the Statistics page for detailed data."
                     confidence = 0.5
+                
+                # Use Claude to answer the question if available
+                try:
+                    claude_client = await get_claude_client()
+                    trading_context = {
+                        "overall_stats": {
+                            "win_rate": win_rate if 'win_rate' in locals() else None,
+                            "total_trades": len(trade_data) if trade_data else 0,
+                            "total_profit": sum(t.get("profit_loss", 0) for t in trade_data) if trade_data else 0,
+                            "profit_per_trade": sum(t.get("profit_loss", 0) for t in trade_data) / len(trade_data) if trade_data and len(trade_data) > 0 else 0
+                        },
+                        "recent_trades": trade_data[:5] if trade_data else [],
+                        "trade_count": len(trade_data) if trade_data else 0
+                    }
+                    
+                    claude_answer = await claude_client.answer_trading_question(question, trading_context)
+                    if claude_answer.get("answer"):
+                        answer = claude_answer.get("answer")
+                        confidence = claude_answer.get("confidence", 0.7)
+                except Exception as e:
+                    logger.warning(f"Error using Claude for answering question: {str(e)}")
                 
                 return {
                     "answer": answer,

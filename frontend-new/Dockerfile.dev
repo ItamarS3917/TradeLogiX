@@ -1,5 +1,5 @@
-# Use Node.js 16
-FROM node:16-slim
+# Use Node.js 18
+FROM node:18-slim
 
 # Set working directory
 WORKDIR /app
@@ -8,11 +8,15 @@ WORKDIR /app
 COPY package*.json ./
 COPY vite.config.js ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with clean cache to avoid issues
+RUN npm cache clean --force && \
+    npm install
+
+# Copy the rest of the application
+COPY . .
 
 # Expose port
 EXPOSE 3000
 
-# Start Vite server
-CMD ["npm", "start"]
+# Start Vite server with host option
+CMD ["npm", "run", "start"]

@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import json
 import logging
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from ...db.database import get_db
@@ -28,19 +28,63 @@ class StatisticsMCPServer(MCPServer):
     """
     
     def __init__(self, db_session_factory=get_db):
-        super().__init__(name="statistics", version="1.0.0")
+        super().__init__({"name": "statistics", "version": "1.0.0", "port": 8001})
         self.db_session_factory = db_session_factory
         
-        # Register MCP methods
-        self.register_method("get_statistics", self.get_statistics)
-        self.register_method("get_win_rate_by_setup", self.get_win_rate_by_setup)
-        self.register_method("get_profitability_by_time", self.get_profitability_by_time)
-        self.register_method("generate_charts", self.generate_charts)
-        self.register_method("analyze_trade_patterns", self.analyze_trade_patterns)
-        self.register_method("identify_optimal_trading_times", self.identify_optimal_trading_times)
-        self.register_method("calculate_risk_metrics", self.calculate_risk_metrics)
-        self.register_method("analyze_drawdown", self.analyze_drawdown)
-        self.register_method("calculate_sharpe_ratio", self.calculate_sharpe_ratio)
+    def register_routes(self):
+        """
+        Register API routes for the statistics server
+        """
+        # Statistics endpoints
+        @self.app.get("/api/v1/statistics")
+        async def get_statistics_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.get_statistics(params)
+            
+        @self.app.get("/api/v1/statistics/win-rate-by-setup")
+        async def win_rate_by_setup_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.get_win_rate_by_setup(params)
+            
+        @self.app.get("/api/v1/statistics/profitability-by-time")
+        async def profitability_by_time_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.get_profitability_by_time(params)
+            
+        @self.app.post("/api/v1/statistics/charts")
+        async def generate_charts_endpoint(request: Request):
+            body = await request.json()
+            data = body.get("data", {})
+            options = body.get("options", {})
+            return await self.generate_charts(data, options)
+            
+        @self.app.get("/api/v1/statistics/trade-patterns")
+        async def trade_patterns_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.analyze_trade_patterns(params)
+            
+        @self.app.get("/api/v1/statistics/optimal-trading-times")
+        async def optimal_trading_times_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.identify_optimal_trading_times(params)
+            
+        @self.app.get("/api/v1/statistics/risk-metrics")
+        async def risk_metrics_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.calculate_risk_metrics(params)
+            
+        @self.app.get("/api/v1/statistics/drawdown")
+        async def drawdown_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.analyze_drawdown(params)
+            
+        @self.app.get("/api/v1/statistics/sharpe-ratio")
+        async def sharpe_ratio_endpoint(request: Request):
+            params = dict(request.query_params)
+            return await self.calculate_sharpe_ratio(params)
+        
+        # MCP methods are exposed via API endpoints in register_routes
+        # No need to call register_method as it doesn't exist in MCPServer class
     
     async def get_statistics(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """

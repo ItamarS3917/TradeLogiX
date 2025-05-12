@@ -23,6 +23,7 @@ import {
   EventNote as EventNoteIcon,
   LibraryBooks as LibraryBooksIcon,
   Settings as SettingsIcon,
+  Psychology as PsychologyIcon,
   Logout as LogoutIcon 
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -61,6 +62,7 @@ const MainLayout = () => {
     { text: 'Trade Journal', icon: <LibraryBooksIcon />, path: '/trades' },
     { text: 'Daily Planning', icon: <EventNoteIcon />, path: '/planning' },
     { text: 'Statistics', icon: <AssessmentIcon />, path: '/statistics' },
+    { text: 'TradeSage AI', icon: <PsychologyIcon />, path: '/tradesage' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
   

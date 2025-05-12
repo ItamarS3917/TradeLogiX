@@ -60,7 +60,8 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    return !!token;
+    // For development, always return true to bypass authentication
+    return true; // Change this to "return !!token;" when ready for real authentication
   };
 
   // Context value

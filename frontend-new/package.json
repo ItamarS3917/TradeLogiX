@@ -5,10 +5,10 @@
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
-    "@hookform/resolvers": "^3.1.0",
+    "@hookform/resolvers": "^3.10.0",
     "@mui/icons-material": "^5.11.11",
     "@mui/material": "^5.11.11",
-    "@mui/x-date-pickers": "^6.5.0",
+    "@mui/x-date-pickers": "^6.20.2",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -22,12 +22,12 @@
     "react-hook-form": "^7.43.5",
     "react-icons": "^4.8.0",
     "react-router-dom": "^6.8.2",
-    "recharts": "^2.5.0",
+    "recharts": "^2.15.3",
     "web-vitals": "^2.1.4",
-    "yup": "^1.1.1"
+    "yup": "^1.6.1"
   },
   "scripts": {
-    "start": "vite",
+    "start": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -4,7 +4,7 @@
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import logging
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 import json
 import re
@@ -17,23 +17,50 @@ from ..tools.sentiment_analysis import analyze_text_sentiment, get_emotional_key
 
 logger = logging.getLogger(__name__)
 
-class SentimentAnalysisMCPServer(MCPServer):
+class SentimentAnalysisServer(MCPServer):
     """
     MCP server for sentiment analysis and emotional impact evaluation
     Provides enhanced analysis of trading psychology and emotional patterns
     """
     
     def __init__(self, db_session_factory=get_db):
-        super().__init__(name="sentiment_analysis", version="1.0.0")
+        super().__init__({"name": "sentiment_analysis", "version": "1.0.0", "port": 8006})
         self.db_session_factory = db_session_factory
         
-        # Register MCP methods
-        self.register_method("analyze_emotional_impact", self.analyze_emotional_impact)
-        self.register_method("analyze_text_sentiment", self.analyze_text_sentiment)
-        self.register_method("get_emotional_keywords", self.get_emotional_keywords)
-        self.register_method("analyze_journal_sentiment", self.analyze_journal_sentiment)
-        self.register_method("compare_emotional_states", self.compare_emotional_states)
-        self.register_method("generate_emotional_insights", self.generate_emotional_insights)
+    def register_routes(self):
+        """
+        Register API routes for the sentiment analysis server
+        """
+        # Sentiment analysis endpoints
+        @self.app.post("/api/v1/sentiment/emotional-impact")
+        async def emotional_impact_endpoint(request: Request):
+            params = await request.json()
+            return await self.analyze_emotional_impact(params)
+            
+        @self.app.post("/api/v1/sentiment/analyze-text")
+        async def analyze_text_endpoint(request: Request):
+            params = await request.json()
+            return await self.analyze_text_sentiment(params)
+            
+        @self.app.post("/api/v1/sentiment/emotional-keywords")
+        async def emotional_keywords_endpoint(request: Request):
+            params = await request.json()
+            return await self.get_emotional_keywords(params)
+            
+        @self.app.post("/api/v1/sentiment/journal-analysis")
+        async def journal_sentiment_endpoint(request: Request):
+            params = await request.json()
+            return await self.analyze_journal_sentiment(params)
+            
+        @self.app.post("/api/v1/sentiment/compare-emotions")
+        async def compare_emotions_endpoint(request: Request):
+            params = await request.json()
+            return await self.compare_emotional_states(params)
+            
+        @self.app.post("/api/v1/sentiment/generate-insights")
+        async def generate_insights_endpoint(request: Request):
+            params = await request.json()
+            return await self.generate_emotional_insights(params)
     
     async def analyze_emotional_impact(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -872,4 +899,4 @@ class SentimentAnalysisMCPServer(MCPServer):
         return suggestions[:3]  # Return top 3 most relevant suggestions
 
 # Create an instance of the MCP server
-sentiment_analysis_mcp_server = SentimentAnalysisMCPServer()
+sentiment_analysis_mcp_server = SentimentAnalysisServer()

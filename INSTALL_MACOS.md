@@ -9,7 +9,7 @@ This guide provides instructions for setting up the Trading Journal application 
 First, clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/yourusername/tradingjournalapp.git
+git clone https://github.com/Itamars3917/tradingjournalapp.git
 cd tradingjournalapp
 ```
 
