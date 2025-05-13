@@ -14,6 +14,7 @@ from .servers.market_data_server import MarketDataServer
 from .servers.trade_analysis_server import TradeAnalysisServer
 from .servers.sentiment_analysis import SentimentAnalysisServer
 from .servers.alert_server import AlertServer
+from .servers.preferences_server import PreferencesServer
 from .servers.tradesage_server import TradeSageMCPServer, start_server as start_tradesage_server
 
 # Configure logging
@@ -71,6 +72,10 @@ class MCPIntegration:
         # Alerts Server
         if self._is_server_enabled("alerts"):
             self.servers["alerts"] = self._initialize_alerts_server()
+            
+        # Preferences Server
+        if self._is_server_enabled("preferences"):
+            self.servers["preferences"] = self._initialize_preferences_server()
         
         # TradeSage Server
         if self._is_server_enabled("tradeSage"):
@@ -258,10 +263,29 @@ class MCPIntegration:
         config = {
             "host": "localhost",
             "port": port,
-            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None,
+            "notification": self.config.services.get("notification", {})
         }
         
         return AlertServer(config)
+        
+    def _initialize_preferences_server(self) -> PreferencesServer:
+        """
+        Initialize preferences server
+        
+        Returns:
+            PreferencesServer: Preferences server
+        """
+        server_config = self.config.servers.get("preferences", {})
+        port = int(server_config.get("url", "http://localhost:8008").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return PreferencesServer(config)
     
     def _initialize_tradesage_server(self) -> TradeSageMCPServer:
         """

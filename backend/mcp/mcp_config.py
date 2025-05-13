@@ -51,6 +51,12 @@ class MCPConfig(BaseModel):
         description="MCP security configuration"
     )
     
+    # Services configuration
+    services: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="MCP services configuration"
+    )
+    
     # Feature flags
     features: Dict[str, bool] = Field(
         default_factory=dict,
@@ -74,6 +80,21 @@ class MCPConfig(BaseModel):
             "security": {
                 "api_key_required": False,
                 "api_key": None
+            },
+            "services": {
+                "notification": {
+                    "email": {
+                        "enabled": False,
+                        "smtp_server": "",
+                        "smtp_port": 587,
+                        "username": "",
+                        "password": "",
+                        "from_email": ""
+                    },
+                    "browser": {
+                        "enabled": True
+                    }
+                }
             },
             "features": {
                 "statistics_enhancement": True,
@@ -147,6 +168,11 @@ class MCPConfig(BaseModel):
                 "url": os.environ.get("MCP_TRADESAGE_URL", "http://localhost:8007/mcp/tradesage"),
                 "version": "1.0.0",
                 "enabled": bool(os.environ.get("MCP_TRADESAGE_ENABLED", "true").lower() in ("true", "1", "yes"))
+            },
+            "preferences": {
+                "url": os.environ.get("MCP_PREFERENCES_URL", "http://localhost:8008/mcp/preferences"),
+                "version": "1.0.0",
+                "enabled": bool(os.environ.get("MCP_PREFERENCES_ENABLED", "true").lower() in ("true", "1", "yes"))
             }
         }
         
@@ -181,6 +207,7 @@ class MCPConfig(BaseModel):
                 }
                 for name, config in self.servers.items()
             },
+            "services": self.services,
             "features": self.features
         }
 

@@ -14,7 +14,8 @@ import {
   IconButton, 
   Divider,
   useMediaQuery,
-  useTheme 
+  useTheme,
+  Collapse
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -24,7 +25,13 @@ import {
   LibraryBooks as LibraryBooksIcon,
   Settings as SettingsIcon,
   Psychology as PsychologyIcon,
-  Logout as LogoutIcon 
+  CloudSync as CloudSyncIcon,
+  ShowChart as ShowChartIcon,
+  Logout as LogoutIcon,
+  ExpandLess,
+  ExpandMore,
+  Cloud as CloudIcon,
+  IntegrationInstructions as IntegrationIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,6 +43,7 @@ const MainLayout = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +64,10 @@ const MainLayout = () => {
     navigate('/login');
   };
   
+  const toggleIntegrations = () => {
+    setIntegrationsOpen(!integrationsOpen);
+  };
+  
   // Navigation items
   const navItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
@@ -63,7 +75,12 @@ const MainLayout = () => {
     { text: 'Daily Planning', icon: <EventNoteIcon />, path: '/planning' },
     { text: 'Statistics', icon: <AssessmentIcon />, path: '/statistics' },
     { text: 'TradeSage AI', icon: <PsychologyIcon />, path: '/tradesage' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  ];
+  
+  // Integration items
+  const integrationItems = [
+    { text: 'Cloud Sync', icon: <CloudSyncIcon />, path: '/cloud-sync' },
+    { text: 'TradingView', icon: <ShowChartIcon />, path: '/tradingview' },
   ];
   
   // Drawer content
@@ -89,6 +106,47 @@ const MainLayout = () => {
             </ListItemButton>
           </ListItem>
         ))}
+        
+        {/* Integrations section with collapse */}
+        <ListItem disablePadding>
+          <ListItemButton onClick={toggleIntegrations}>
+            <ListItemIcon>
+              <IntegrationIcon />
+            </ListItemIcon>
+            <ListItemText primary="Integrations" />
+            {integrationsOpen ? <ExpandLess /> : <ExpandMore />}
+          </ListItemButton>
+        </ListItem>
+        <Collapse in={integrationsOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {integrationItems.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton 
+                  sx={{ pl: 4 }}
+                  onClick={() => navigateTo(item.path)}
+                  selected={location.pathname === item.path}
+                >
+                  <ListItemIcon>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Collapse>
+        
+        <ListItem disablePadding>
+          <ListItemButton 
+            onClick={() => navigateTo('/settings')}
+            selected={location.pathname === '/settings'}
+          >
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText primary="Settings" />
+          </ListItemButton>
+        </ListItem>
       </List>
       <Divider />
       <List>
@@ -124,9 +182,16 @@ const MainLayout = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {user ? `Welcome, ${user.name}` : 'Trading Journal App'}
           </Typography>
+          
+          {/* Mobile-responsive indicator in appbar */}
+          {isMobile && (
+            <Typography variant="caption" color="inherit">
+              Mobile View
+            </Typography>
+          )}
         </Toolbar>
       </AppBar>
       
@@ -171,7 +236,9 @@ const MainLayout = () => {
           flexGrow: 1, 
           p: 3, 
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          marginTop: '64px' // Height of the AppBar
+          marginTop: '64px', // Height of the AppBar
+          maxWidth: '100%', // Ensure content doesn't overflow on mobile
+          overflowX: 'hidden' // Prevent horizontal scrolling
         }}
       >
         <Outlet /> {/* Render child routes here */}

@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routes
-from .routes import users, trades, plans, journals, statistics, alerts, tradesage
+from .routes import users, trades, plans, journals, statistics, alerts, tradesage, cloud_sync
 
 # Import database
 from ..db.database import get_db, initialize_db
@@ -56,6 +56,7 @@ app.include_router(journals.router, prefix="/api/journals", tags=["journals"])
 app.include_router(statistics.router, prefix="/api/statistics", tags=["statistics"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(tradesage.router, prefix="/api/tradesage", tags=["tradesage"])
+app.include_router(cloud_sync.router, prefix="/api/cloud-sync", tags=["cloud-sync"])
 
 # Root endpoint
 @app.get("/")
@@ -88,7 +89,9 @@ async def api_info():
             "Journaling",
             "Statistical analysis",
             "AI-powered insights (TradeSage)",
-            "Alerts and notifications"
+            "Alerts and notifications",
+            "Cloud synchronization",
+            "TradingView integration"
         ],
         "endpoints": {
             "users": "/api/users",
@@ -98,6 +101,7 @@ async def api_info():
             "statistics": "/api/statistics",
             "alerts": "/api/alerts",
             "tradesage": "/api/tradesage",
+            "cloud_sync": "/api/cloud-sync",
             "mcp": "/api/mcp"
         },
         "mcp": mcp_status
@@ -109,7 +113,13 @@ async def shutdown_event():
     # Stop MCP servers
     mcp = get_mcp_integration()
     mcp.stop_servers()
-    print("Stopped MCP servers")
+    
+    # Close cloud sync manager if running
+    from ..services.cloud_service import CloudSyncManager
+    if 'cloud_sync_manager' in globals() and cloud_sync_manager is not None:
+        await cloud_sync_manager.close()
+    
+    print("Stopped MCP servers and closed resources")
 
 # TODO: Add authentication middleware
 # TODO: Add error handling middleware
