@@ -8,13 +8,13 @@ import { getAuth } from "firebase/auth"; // Import Firebase Auth
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAWj6oe0Vn_yoDOfaVYfuBTUibHNKwu1-8",
-  authDomain: "tradelogix-9f574.firebaseapp.com",
-  projectId: "tradelogix-9f574",
-  storageBucket: "tradelogix-9f574.firebasestorage.app",
-  messagingSenderId: "500665717468",
-  appId: "1:500665717468:web:29cad6f1c299bd41905a19",
-  measurementId: "G-Z3HQ6R5FJQ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
