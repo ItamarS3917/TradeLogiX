@@ -10,7 +10,8 @@ COPY vite.config.js ./
 
 # Install dependencies with clean cache to avoid issues
 RUN npm cache clean --force && \
-    npm install
+    npm install && \
+    npm install --save firebase@11.7.3
 
 # Copy the rest of the application
 COPY . .

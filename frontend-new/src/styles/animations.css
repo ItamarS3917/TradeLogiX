@@ -1,0 +1,391 @@
+/* 
+ * Enhanced Trading Journal Animation Utilities
+ * 
+ * This CSS file provides utility classes for animations throughout the application.
+ * Classes are designed with performance in mind, leveraging GPU-accelerated
+ * properties and respecting user preferences for reduced motion.
+ */
+
+/* Base animation settings */
+:root {
+  --animate-duration-shortest: 150ms;
+  --animate-duration-shorter: 200ms;
+  --animate-duration-short: 250ms;
+  --animate-duration-standard: 300ms;
+  --animate-duration-complex: 375ms;
+  --animate-duration-entering: 225ms;
+  --animate-duration-leaving: 195ms;
+  --animate-duration-long: 400ms;
+  --animate-duration-longer: 500ms;
+  
+  --animate-easing-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --animate-easing-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --animate-easing-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --animate-easing-premium: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-duration-shortest: 0ms;
+    --animate-duration-shorter: 0ms;
+    --animate-duration-short: 0ms;
+    --animate-duration-standard: 0ms;
+    --animate-duration-complex: 0ms;
+    --animate-duration-entering: 0ms;
+    --animate-duration-leaving: 0ms;
+    --animate-duration-long: 0ms;
+    --animate-duration-longer: 0ms;
+  }
+  
+  .animate-any {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Animation base class */
+.animate-any {
+  animation-duration: var(--animate-duration-standard);
+  animation-fill-mode: both;
+  animation-timing-function: var(--animate-easing-standard);
+}
+
+/* Duration modifiers */
+.duration-shortest { animation-duration: var(--animate-duration-shortest); }
+.duration-shorter { animation-duration: var(--animate-duration-shorter); }
+.duration-short { animation-duration: var(--animate-duration-short); }
+.duration-standard { animation-duration: var(--animate-duration-standard); }
+.duration-complex { animation-duration: var(--animate-duration-complex); }
+.duration-entering { animation-duration: var(--animate-duration-entering); }
+.duration-leaving { animation-duration: var(--animate-duration-leaving); }
+.duration-long { animation-duration: var(--animate-duration-long); }
+.duration-longer { animation-duration: var(--animate-duration-longer); }
+
+/* Easing modifiers */
+.easing-standard { animation-timing-function: var(--animate-easing-standard); }
+.easing-decelerate { animation-timing-function: var(--animate-easing-decelerate); }
+.easing-accelerate { animation-timing-function: var(--animate-easing-accelerate); }
+.easing-premium { animation-timing-function: var(--animate-easing-premium); }
+
+/* Delay modifiers */
+.delay-none { animation-delay: 0ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Iteration modifiers */
+.iterate-once { animation-iteration-count: 1; }
+.iterate-twice { animation-iteration-count: 2; }
+.iterate-thrice { animation-iteration-count: 3; }
+.iterate-infinite { animation-iteration-count: infinite; }
+
+/* Direction modifiers */
+.direction-normal { animation-direction: normal; }
+.direction-reverse { animation-direction: reverse; }
+.direction-alternate { animation-direction: alternate; }
+
+/* Fill mode modifiers */
+.fill-none { animation-fill-mode: none; }
+.fill-forwards { animation-fill-mode: forwards; }
+.fill-backwards { animation-fill-mode: backwards; }
+.fill-both { animation-fill-mode: both; }
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUpIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideLeftIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideRightIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes growIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shrinkOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes priceFlash {
+  0% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: rgba(76, 175, 80, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes priceFlashNegative {
+  0% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: rgba(244, 67, 54, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes microBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Animation utility classes */
+.animate-fade-in {
+  animation-name: fadeIn;
+}
+
+.animate-fade-out {
+  animation-name: fadeOut;
+}
+
+.animate-slide-up {
+  animation-name: slideUpIn;
+}
+
+.animate-slide-down {
+  animation-name: slideDownIn;
+}
+
+.animate-slide-left {
+  animation-name: slideLeftIn;
+}
+
+.animate-slide-right {
+  animation-name: slideRightIn;
+}
+
+.animate-grow {
+  animation-name: growIn;
+}
+
+.animate-shrink {
+  animation-name: shrinkOut;
+}
+
+.animate-price-flash {
+  animation-name: priceFlash;
+}
+
+.animate-price-flash-negative {
+  animation-name: priceFlashNegative;
+}
+
+.animate-pulse {
+  animation-name: pulse;
+}
+
+.animate-bounce {
+  animation-name: microBounce;
+}
+
+/* Trade-specific animation classes */
+.animate-trade-entry {
+  animation-name: slideUpIn;
+  animation-duration: var(--animate-duration-standard);
+  animation-timing-function: var(--animate-easing-premium);
+}
+
+.animate-trade-profit-flash {
+  animation-name: priceFlash;
+  animation-duration: var(--animate-duration-long);
+  animation-timing-function: var(--animate-easing-standard);
+}
+
+.animate-trade-loss-flash {
+  animation-name: priceFlashNegative;
+  animation-duration: var(--animate-duration-long);
+  animation-timing-function: var(--animate-easing-standard);
+}
+
+.animate-chart-update {
+  animation-name: fadeIn;
+  animation-duration: var(--animate-duration-shorter);
+  animation-timing-function: var(--animate-easing-standard);
+}
+
+/* Staggered dashboard card animations */
+.animate-dashboard-card:nth-child(1) { animation-delay: 0ms; }
+.animate-dashboard-card:nth-child(2) { animation-delay: 100ms; }
+.animate-dashboard-card:nth-child(3) { animation-delay: 200ms; }
+.animate-dashboard-card:nth-child(4) { animation-delay: 300ms; }
+.animate-dashboard-card:nth-child(5) { animation-delay: 400ms; }
+.animate-dashboard-card:nth-child(6) { animation-delay: 500ms; }
+
+/* Transition utility classes */
+.transition-standard {
+  transition-property: all;
+  transition-duration: var(--animate-duration-standard);
+  transition-timing-function: var(--animate-easing-standard);
+}
+
+.transition-short {
+  transition-property: all;
+  transition-duration: var(--animate-duration-short);
+  transition-timing-function: var(--animate-easing-standard);
+}
+
+.transition-premium {
+  transition-property: all;
+  transition-duration: var(--animate-duration-standard);
+  transition-timing-function: var(--animate-easing-premium);
+}
+
+/* Hover effect utility classes */
+.hover-rise {
+  transition: transform var(--animate-duration-standard) var(--animate-easing-premium),
+              box-shadow var(--animate-duration-standard) var(--animate-easing-premium);
+}
+
+.hover-rise:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.13);
+}
+
+.hover-scale {
+  transition: transform var(--animate-duration-standard) var(--animate-easing-premium),
+              box-shadow var(--animate-duration-standard) var(--animate-easing-premium);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.13);
+}
+
+/* Button hover effects */
+.button-hover {
+  transition: transform var(--animate-duration-shorter) var(--animate-easing-premium),
+              box-shadow var(--animate-duration-shorter) var(--animate-easing-premium);
+}
+
+.button-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+}
+
+.button-hover:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  transition: transform var(--animate-duration-shortest) var(--animate-easing-accelerate),
+              box-shadow var(--animate-duration-shortest) var(--animate-easing-accelerate);
+}
+
+/* Page transition classes */
+.page-enter {
+  animation-name: slideUpIn;
+  animation-duration: var(--animate-duration-entering);
+  animation-timing-function: var(--animate-easing-decelerate);
+  animation-fill-mode: forwards;
+}
+
+.page-exit {
+  animation-name: fadeOut;
+  animation-duration: var(--animate-duration-leaving);
+  animation-timing-function: var(--animate-easing-accelerate);
+  animation-fill-mode: forwards;
+}
+
+/* Mobile/touch-specific classes */
+@media (max-width: 600px) {
+  .animate-dashboard-card:nth-child(n) {
+    animation-delay: calc(var(--index, 0) * 50ms); /* Faster on mobile */
+  }
+  
+  .hover-rise:hover,
+  .hover-scale:hover {
+    /* Remove hover effects on touch devices */
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Add a class to disable all animations for performance debugging */
+.disable-animations * {
+  animation: none !important;
+  transition: none !important;
+}

@@ -255,6 +255,135 @@ async def get_market_condition_performance(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating market condition performance: {str(e)}")
 
+@router.get("/asset-comparison")
+async def get_asset_comparison(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    asset_types: Optional[str] = None,
+    db: Session = Depends(get_db),
+    mcp_client = Depends(get_mcp_client)
+):
+    """
+    Get performance comparison across different asset classes
+    """
+    try:
+        # Parse dates if provided
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+        
+        # Parse asset types if provided (comma-separated)
+        asset_types_list = asset_types.split(',') if asset_types else None
+        
+        # Try using MCP statistics server if available
+        if mcp_client and hasattr(mcp_client, 'statistics'):
+            try:
+                mcp_stats = await mcp_client.statistics.get_asset_comparison({
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'asset_types': asset_types_list
+                })
+                return mcp_stats
+            except Exception as e:
+                print(f"MCP statistics server error: {e}")
+                # Fall back to regular implementation
+        
+        # Calculate statistics using the service
+        comparison_stats = calculate_asset_comparison(
+            db=db,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            asset_types=asset_types_list
+        )
+        
+        return comparison_stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating asset comparison: {str(e)}")
+
+@router.get("/asset-correlation")
+async def get_asset_correlation(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    symbols: Optional[str] = None,
+    db: Session = Depends(get_db),
+    mcp_client = Depends(get_mcp_client)
+):
+    """
+    Get correlation analysis between different assets
+    """
+    try:
+        # Parse dates if provided
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+        
+        # Parse symbols if provided (comma-separated)
+        symbols_list = symbols.split(',') if symbols else None
+        
+        # Try using MCP statistics server if available
+        if mcp_client and hasattr(mcp_client, 'statistics'):
+            try:
+                mcp_stats = await mcp_client.statistics.get_asset_correlation({
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'symbols': symbols_list
+                })
+                return mcp_stats
+            except Exception as e:
+                print(f"MCP statistics server error: {e}")
+                # Fall back to regular implementation
+        
+        # Calculate statistics using the service
+        correlation_stats = calculate_asset_correlation_analysis(
+            db=db,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            symbols=symbols_list
+        )
+        
+        return correlation_stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating asset correlation: {str(e)}")
+
+@router.get("/market-strategy")
+async def get_market_strategy_performance(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    asset_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    mcp_client = Depends(get_mcp_client)
+):
+    """
+    Get effectiveness of different strategies for specific market types
+    """
+    try:
+        # Parse dates if provided
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
+        
+        # Try using MCP statistics server if available
+        if mcp_client and hasattr(mcp_client, 'statistics'):
+            try:
+                mcp_stats = await mcp_client.statistics.get_market_strategy_performance({
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'asset_type': asset_type
+                })
+                return mcp_stats
+            except Exception as e:
+                print(f"MCP statistics server error: {e}")
+                # Fall back to regular implementation
+        
+        # Calculate statistics using the service
+        strategy_stats = calculate_market_specific_strategy_performance(
+            db=db,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            asset_type=asset_type
+        )
+        
+        return strategy_stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating market strategy performance: {str(e)}")
+
 @router.get("/plan-adherence")
 async def get_plan_adherence_analysis(
     start_date: Optional[str] = None,

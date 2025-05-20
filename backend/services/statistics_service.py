@@ -5,11 +5,13 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy import func, case, and_, extract
 from sqlalchemy.orm import Session
+import sqlalchemy.orm
 import json
 import statistics as stats
 
 from ..models.trade import Trade
 from ..models.daily_plan import DailyPlan
+from ..models.asset import Asset
 
 def calculate_overall_statistics(
     db: Session,
@@ -24,16 +26,36 @@ def calculate_overall_statistics(
     # Build the base query with filters
     query = db.query(Trade)
     
+    # Add filters and make them index-efficient
+    filters = []
     if start_date:
-        query = query.filter(Trade.entry_time >= start_date)
+        filters.append(Trade.entry_time >= start_date)
     if end_date:
         # Include the entire end date by setting time to 23:59:59
         end_datetime = datetime.combine(end_date.date(), datetime.max.time())
-        query = query.filter(Trade.entry_time <= end_datetime)
+        filters.append(Trade.entry_time <= end_datetime)
     if symbol:
-        query = query.filter(Trade.symbol == symbol)
+        filters.append(Trade.symbol == symbol)
     if setup_type:
-        query = query.filter(Trade.setup_type == setup_type)
+        filters.append(Trade.setup_type == setup_type)
+    
+    # Apply all filters at once for better query optimization
+    if filters:
+        query = query.filter(*filters)
+    
+    # Use hybrid loading to optimize performance
+    # Only select the columns we need for statistics calculations
+    query = query.options(
+        sqlalchemy.orm.load_only(
+            Trade.outcome, 
+            Trade.profit_loss, 
+            Trade.entry_time, 
+            Trade.exit_time,
+            Trade.planned_risk_reward,
+            Trade.actual_risk_reward,
+            Trade.plan_adherence
+        )
+    )
     
     # Execute the query to get all filtered trades
     trades = query.all()
@@ -722,6 +744,442 @@ def calculate_market_condition_performance(
             "averageProfit": -42.18
         }
     ]
+
+def calculate_asset_comparison(
+    db: Session,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    asset_types: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Calculate performance comparison across different asset classes
+    """
+    # Build the base query with filters
+    query = db.query(Trade).join(Asset, Trade.symbol == Asset.symbol)
+    
+    if start_date:
+        query = query.filter(Trade.entry_time >= start_date)
+    if end_date:
+        end_datetime = datetime.combine(end_date.date(), datetime.max.time())
+        query = query.filter(Trade.entry_time <= end_datetime)
+    if asset_types:
+        query = query.filter(Asset.asset_type.in_(asset_types))
+    
+    # Execute the query to get all filtered trades with asset info
+    trades = query.all()
+    
+    if not trades:
+        return {
+            "assetComparison": [],
+            "overallPerformance": {},
+            "topPerformingAssets": [],
+            "worstPerformingAssets": []
+        }
+    
+    # Get all assets
+    assets = db.query(Asset).all()
+    asset_map = {asset.symbol: asset for asset in assets}
+    
+    # Group trades by asset type
+    asset_type_trades = {}
+    for trade in trades:
+        asset = asset_map.get(trade.symbol)
+        if not asset:
+            continue
+            
+        asset_type = asset.asset_type
+        if asset_type not in asset_type_trades:
+            asset_type_trades[asset_type] = []
+        
+        asset_type_trades[asset_type].append(trade)
+    
+    # Group trades by specific asset (symbol)
+    symbol_trades = {}
+    for trade in trades:
+        symbol = trade.symbol
+        if symbol not in symbol_trades:
+            symbol_trades[symbol] = []
+        
+        symbol_trades[symbol].append(trade)
+    
+    # Calculate metrics for each asset type
+    asset_comparison = []
+    for asset_type, type_trades in asset_type_trades.items():
+        total = len(type_trades)
+        wins = sum(1 for t in type_trades if t.outcome == "Win")
+        
+        win_rate = round((wins / total) * 100, 2) if total > 0 else 0
+        
+        net_profit = sum(t.profit_loss for t in type_trades)
+        average_profit = net_profit / total if total > 0 else 0
+        
+        # Calculate gross profit and loss
+        gross_profit = sum(t.profit_loss for t in type_trades if t.profit_loss > 0)
+        gross_loss = sum(t.profit_loss for t in type_trades if t.profit_loss < 0)
+        
+        # Calculate profit factor
+        profit_factor = abs(gross_profit / gross_loss) if gross_loss != 0 else (1 if gross_profit > 0 else 0)
+        
+        # Calculate average trade duration in minutes
+        durations = []
+        for trade in type_trades:
+            if trade.entry_time and trade.exit_time:
+                duration = (trade.exit_time - trade.entry_time).total_seconds() / 60
+                durations.append(duration)
+        
+        average_duration = sum(durations) / len(durations) if durations else 0
+        
+        asset_comparison.append({
+            "assetType": asset_type,
+            "tradeCount": total,
+            "winCount": wins,
+            "lossCount": total - wins,
+            "winRate": win_rate,
+            "netProfit": net_profit,
+            "averageProfit": average_profit,
+            "profitFactor": profit_factor,
+            "averageDuration": average_duration
+        })
+    
+    # Calculate metrics for each specific asset
+    symbol_metrics = []
+    for symbol, sym_trades in symbol_trades.items():
+        total = len(sym_trades)
+        wins = sum(1 for t in sym_trades if t.outcome == "Win")
+        
+        win_rate = round((wins / total) * 100, 2) if total > 0 else 0
+        
+        net_profit = sum(t.profit_loss for t in sym_trades)
+        average_profit = net_profit / total if total > 0 else 0
+        
+        asset = asset_map.get(symbol)
+        asset_type = asset.asset_type if asset else "Unknown"
+        
+        symbol_metrics.append({
+            "symbol": symbol,
+            "assetType": asset_type,
+            "tradeCount": total,
+            "winRate": win_rate,
+            "netProfit": net_profit,
+            "averageProfit": average_profit
+        })
+    
+    # Sort by net profit for top/worst performing assets
+    symbol_metrics.sort(key=lambda x: x["netProfit"], reverse=True)
+    
+    # Get top 5 and worst 5 assets
+    top_assets = symbol_metrics[:5] if len(symbol_metrics) >= 5 else symbol_metrics
+    worst_assets = symbol_metrics[-5:] if len(symbol_metrics) >= 5 else list(reversed(symbol_metrics))
+    
+    # Calculate overall performance across all assets
+    total_trades = len(trades)
+    total_wins = sum(1 for t in trades if t.outcome == "Win")
+    overall_win_rate = round((total_wins / total_trades) * 100, 2) if total_trades > 0 else 0
+    overall_net_profit = sum(t.profit_loss for t in trades)
+    overall_avg_profit = overall_net_profit / total_trades if total_trades > 0 else 0
+    
+    return {
+        "assetComparison": asset_comparison,
+        "overallPerformance": {
+            "totalTrades": total_trades,
+            "winRate": overall_win_rate,
+            "netProfit": overall_net_profit,
+            "averageProfit": overall_avg_profit
+        },
+        "topPerformingAssets": top_assets,
+        "worstPerformingAssets": worst_assets
+    }
+
+def calculate_asset_correlation_analysis(
+    db: Session,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    symbols: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Calculate correlation analysis between different assets
+    """
+    # Build the base query with filters
+    query = db.query(Trade)
+    
+    if start_date:
+        query = query.filter(Trade.entry_time >= start_date)
+    if end_date:
+        end_datetime = datetime.combine(end_date.date(), datetime.max.time())
+        query = query.filter(Trade.entry_time <= end_datetime)
+    if symbols:
+        query = query.filter(Trade.symbol.in_(symbols))
+    
+    # Execute the query to get all filtered trades
+    trades = query.all()
+    
+    if not trades:
+        return {
+            "correlationMatrix": [],
+            "strongestPositiveCorrelation": None,
+            "strongestNegativeCorrelation": None,
+            "correlationInsights": []
+        }
+    
+    # Get all unique symbols in the trades
+    trade_symbols = set(trade.symbol for trade in trades)
+    if not symbols:
+        symbols = list(trade_symbols)
+    else:
+        # Filter to only include symbols that actually have trades
+        symbols = [s for s in symbols if s in trade_symbols]
+    
+    # Group trades by day and symbol
+    daily_results = {}
+    for trade in trades:
+        if not trade.entry_time:
+            continue
+            
+        date_str = trade.entry_time.date().strftime("%Y-%m-%d")
+        symbol = trade.symbol
+        
+        if date_str not in daily_results:
+            daily_results[date_str] = {}
+        
+        if symbol not in daily_results[date_str]:
+            daily_results[date_str][symbol] = 0
+        
+        daily_results[date_str][symbol] += trade.profit_loss
+    
+    # Create time series for each symbol
+    symbol_series = {symbol: [] for symbol in symbols}
+    all_dates = sorted(daily_results.keys())
+    
+    for date_str in all_dates:
+        for symbol in symbols:
+            if symbol in daily_results[date_str]:
+                symbol_series[symbol].append(daily_results[date_str][symbol])
+            else:
+                symbol_series[symbol].append(0)  # No trades for this symbol on this day
+    
+    # Calculate correlation matrix
+    correlation_matrix = []
+    
+    for symbol1 in symbols:
+        series1 = symbol_series[symbol1]
+        row = []
+        
+        for symbol2 in symbols:
+            series2 = symbol_series[symbol2]
+            
+            # Calculate correlation coefficient if enough data points
+            if len(series1) > 1 and len(series2) > 1 and symbol1 != symbol2:
+                try:
+                    correlation = round(stats.correlation(series1, series2), 2)
+                except:
+                    correlation = 0
+            elif symbol1 == symbol2:
+                correlation = 1.0  # Self-correlation is always 1
+            else:
+                correlation = 0
+            
+            row.append(correlation)
+        
+        correlation_matrix.append({
+            "symbol": symbol1,
+            "correlations": row
+        })
+    
+    # Find strongest positive and negative correlations
+    strongest_positive = {
+        "symbols": [symbols[0], symbols[0]],
+        "correlation": 0
+    }
+    strongest_negative = {
+        "symbols": [symbols[0], symbols[0]],
+        "correlation": 0
+    }
+    
+    correlation_insights = []
+    
+    for i, symbol1 in enumerate(symbols):
+        for j, symbol2 in enumerate(symbols):
+            if i != j:  # Skip self-correlations
+                correlation = correlation_matrix[i]["correlations"][j]
+                
+                if correlation > strongest_positive["correlation"]:
+                    strongest_positive = {
+                        "symbols": [symbol1, symbol2],
+                        "correlation": correlation
+                    }
+                
+                if correlation < strongest_negative["correlation"]:
+                    strongest_negative = {
+                        "symbols": [symbol1, symbol2],
+                        "correlation": correlation
+                    }
+                
+                # Add insights for significant correlations
+                if abs(correlation) >= 0.5:
+                    direction = "positive" if correlation > 0 else "negative"
+                    strength = "strong" if abs(correlation) >= 0.7 else "moderate"
+                    
+                    correlation_insights.append({
+                        "symbols": [symbol1, symbol2],
+                        "correlation": correlation,
+                        "direction": direction,
+                        "strength": strength,
+                        "insight": f"{strength.capitalize()} {direction} correlation between {symbol1} and {symbol2}"
+                    })
+    
+    # Return all results
+    return {
+        "correlationMatrix": correlation_matrix,
+        "symbols": symbols,
+        "strongestPositiveCorrelation": strongest_positive if strongest_positive["correlation"] > 0 else None,
+        "strongestNegativeCorrelation": strongest_negative if strongest_negative["correlation"] < 0 else None,
+        "correlationInsights": correlation_insights
+    }
+
+def calculate_market_specific_strategy_performance(
+    db: Session,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    asset_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Calculate effectiveness of different strategies for specific market types
+    """
+    # Build the base query with filters
+    query = db.query(Trade).join(Asset, Trade.symbol == Asset.symbol)
+    
+    if start_date:
+        query = query.filter(Trade.entry_time >= start_date)
+    if end_date:
+        end_datetime = datetime.combine(end_date.date(), datetime.max.time())
+        query = query.filter(Trade.entry_time <= end_datetime)
+    if asset_type:
+        query = query.filter(Asset.asset_type == asset_type)
+    
+    # Execute the query to get all filtered trades
+    trades = query.all()
+    
+    if not trades:
+        return {
+            "strategyPerformance": [],
+            "topStrategies": [],
+            "strategyRecommendations": []
+        }
+    
+    # Get all assets and create a map
+    assets = db.query(Asset).all()
+    asset_map = {asset.symbol: asset for asset in assets}
+    
+    # Group trades by strategy and asset type
+    strategy_by_market = {}
+    
+    for trade in trades:
+        if not trade.setup_type:
+            continue
+            
+        strategy = trade.setup_type
+        asset = asset_map.get(trade.symbol)
+        
+        if not asset:
+            continue
+            
+        market = asset.asset_type
+        
+        if market not in strategy_by_market:
+            strategy_by_market[market] = {}
+        
+        if strategy not in strategy_by_market[market]:
+            strategy_by_market[market][strategy] = []
+        
+        strategy_by_market[market][strategy].append(trade)
+    
+    # Calculate performance for each strategy in each market
+    strategy_performance = []
+    
+    for market, strategies in strategy_by_market.items():
+        for strategy, st_trades in strategies.items():
+            total = len(st_trades)
+            if total == 0:
+                continue
+                
+            wins = sum(1 for t in st_trades if t.outcome == "Win")
+            win_rate = round((wins / total) * 100, 2) if total > 0 else 0
+            
+            profit = sum(t.profit_loss for t in st_trades)
+            avg_profit = profit / total
+            
+            # Calculate expectancy
+            win_amount = sum(t.profit_loss for t in st_trades if t.outcome == "Win") / wins if wins > 0 else 0
+            loss_amount = sum(t.profit_loss for t in st_trades if t.outcome == "Loss") / (total - wins) if (total - wins) > 0 else 0
+            expectancy = (win_rate/100 * win_amount) + ((100 - win_rate)/100 * loss_amount)
+            
+            strategy_performance.append({
+                "market": market,
+                "strategy": strategy,
+                "tradeCount": total,
+                "winRate": win_rate,
+                "netProfit": profit,
+                "avgProfit": avg_profit,
+                "expectancy": expectancy
+            })
+    
+    # Get top strategies for each market
+    top_strategies = []
+    
+    market_strategies = {}
+    for perf in strategy_performance:
+        market = perf["market"]
+        if market not in market_strategies:
+            market_strategies[market] = []
+        
+        market_strategies[market].append(perf)
+    
+    for market, strats in market_strategies.items():
+        # Sort by expectancy
+        strats.sort(key=lambda x: x["expectancy"], reverse=True)
+        
+        # Add top 3 for this market
+        for strat in strats[:3]:
+            top_strategies.append({
+                "market": market,
+                "strategy": strat["strategy"],
+                "winRate": strat["winRate"],
+                "expectancy": strat["expectancy"]
+            })
+    
+    # Generate strategy recommendations
+    strategy_recommendations = []
+    
+    for market, strats in market_strategies.items():
+        # Sort by expectancy
+        strats.sort(key=lambda x: x["expectancy"], reverse=True)
+        
+        if strats:  # Make sure there are strategies for this market
+            best_strategy = strats[0]  # Top strategy by expectancy
+            worst_strategy = strats[-1] if len(strats) > 1 else None  # Worst strategy
+            
+            recommendation = {
+                "market": market,
+                "recommendedStrategy": best_strategy["strategy"],
+                "metrics": {
+                    "winRate": best_strategy["winRate"],
+                    "expectancy": best_strategy["expectancy"],
+                    "tradeCount": best_strategy["tradeCount"]
+                },
+                "recommendation": f"For {market} trading, focus on {best_strategy['strategy']} with a {best_strategy['winRate']}% win rate."
+            }
+            
+            if worst_strategy and worst_strategy["expectancy"] < 0:
+                recommendation["avoidStrategy"] = worst_strategy["strategy"]
+                recommendation["recommendation"] += f" Avoid {worst_strategy['strategy']} which showed negative expectancy."
+            
+            strategy_recommendations.append(recommendation)
+    
+    return {
+        "strategyPerformance": strategy_performance,
+        "topStrategies": top_strategies,
+        "strategyRecommendations": strategy_recommendations
+    }
 
 def calculate_plan_adherence_analysis(
     db: Session,

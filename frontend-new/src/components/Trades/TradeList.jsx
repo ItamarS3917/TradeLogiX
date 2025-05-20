@@ -36,7 +36,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import tradeService from '../../services/tradeService';
+import { useFirebase } from '../../contexts/FirebaseContext'; // Import Firebase context hook
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import { format } from 'date-fns';
 
@@ -56,6 +56,24 @@ const setupTypes = [
   'Other'
 ];
 
+// Helper function to safely convert Firestore timestamps or strings to Date objects
+const safelyParseDate = (timeValue) => {
+  if (!timeValue) return new Date(); // Fallback to current date
+  
+  try {
+    // Handle Firestore timestamp objects
+    if (timeValue && typeof timeValue === 'object' && 'seconds' in timeValue && 'nanoseconds' in timeValue) {
+      return new Date(timeValue.seconds * 1000 + timeValue.nanoseconds / 1000000);
+    }
+    
+    // Handle ISO strings or other date formats
+    return new Date(timeValue);
+  } catch (error) {
+    console.error('Error parsing date:', timeValue, error);
+    return new Date(); // Fallback to current date
+  }
+};
+
 const TradeList = ({ onEdit, onAdd, onDelete, refreshTrigger }) => {
   const { showSnackbar } = useSnackbar();
   const [trades, setTrades] = useState([]);
@@ -63,6 +81,9 @@ const TradeList = ({ onEdit, onAdd, onDelete, refreshTrigger }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Get Firebase operations from context
+  const firebase = useFirebase();
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -74,25 +95,30 @@ const TradeList = ({ onEdit, onAdd, onDelete, refreshTrigger }) => {
   });
 
   useEffect(() => {
+    console.log("TradeList: Using Firebase context");
     fetchTrades();
   }, [refreshTrigger]); // Refresh when triggered externally
 
   const fetchTrades = async () => {
     setLoading(true);
     try {
+      console.log('TradeList: Fetching trades with filters:', filters);
+      
       // Prepare API parameters
       const params = {};
       if (filters.symbol) params.symbol = filters.symbol;
-      if (filters.setupType !== 'All') params.setup_type = filters.setupType;
+      if (filters.setupType !== 'All') params.setupType = filters.setupType;
       if (filters.outcome !== 'All') params.outcome = filters.outcome;
-      if (filters.startDate) params.start_date = format(filters.startDate, 'yyyy-MM-dd');
-      if (filters.endDate) params.end_date = format(filters.endDate, 'yyyy-MM-dd');
+      if (filters.startDate) params.startDate = format(filters.startDate, 'yyyy-MM-dd');
+      if (filters.endDate) params.endDate = format(filters.endDate, 'yyyy-MM-dd');
       
-      const data = await tradeService.getAllTrades(params);
-      setTrades(data);
+      const data = await firebase.getAllTrades(params);
+      console.log('TradeList: Fetched trades:', data);
+      setTrades(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching trades:', error);
-      showSnackbar('Failed to load trades', 'error');
+      showSnackbar('Failed to load trades: ' + (error.message || 'Unknown error'), 'error');
+      setTrades([]);
     } finally {
       setLoading(false);
     }
@@ -135,13 +161,14 @@ const TradeList = ({ onEdit, onAdd, onDelete, refreshTrigger }) => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this trade? This action cannot be undone.')) {
       try {
-        await tradeService.deleteTrade(id);
+        console.log('TradeList: Deleting trade with ID:', id);
+        await firebase.deleteTrade(id);
         setTrades(trades.filter(trade => trade.id !== id));
         showSnackbar('Trade deleted successfully', 'success');
         if (onDelete) onDelete(id);
       } catch (error) {
         console.error('Error deleting trade:', error);
-        showSnackbar('Failed to delete trade', 'error');
+        showSnackbar('Failed to delete trade: ' + (error.message || 'Unknown error'), 'error');
       }
     }
   };
@@ -300,9 +327,9 @@ const TradeList = ({ onEdit, onAdd, onDelete, refreshTrigger }) => {
                   .map((trade) => (
                     <TableRow hover key={trade.id}>
                       <TableCell>
-                        {format(new Date(trade.entry_time), 'MMM dd, yyyy')}
+                        {format(safelyParseDate(trade.entry_time), 'MMM dd, yyyy')}
                         <Typography variant="caption" display="block" color="text.secondary">
-                          {format(new Date(trade.entry_time), 'HH:mm')}
+                          {format(safelyParseDate(trade.entry_time), 'HH:mm')}
                         </Typography>
                       </TableCell>
                       <TableCell>{trade.symbol}</TableCell>

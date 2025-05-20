@@ -101,6 +101,48 @@ const statisticsService = {
       throw error;
     }
   },
+  
+  /**
+   * Get performance comparison across different asset classes
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Response from API
+   */
+  getAssetComparison: async (params = {}) => {
+    try {
+      const response = await api.get('/statistics/asset-comparison', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get correlation analysis between different assets
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Response from API
+   */
+  getAssetCorrelation: async (params = {}) => {
+    try {
+      const response = await api.get('/statistics/asset-correlation', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get effectiveness of different strategies for specific market types
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Response from API
+   */
+  getMarketStrategyPerformance: async (params = {}) => {
+    try {
+      const response = await api.get('/statistics/market-strategy', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
   /**
    * Generate AI-powered insights based on trading statistics

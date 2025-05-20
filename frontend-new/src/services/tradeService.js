@@ -128,6 +128,48 @@ const tradeService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Get all available setup types
+   * @returns {Promise} - Response from API or default types
+   */
+  getSetupTypes: async () => {
+    try {
+      const response = await api.get('/trades/setup-types');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching setup types:', error);
+      // Return default setup types if API fails
+      return [
+        'FVG Fill',
+        'BPR',
+        'OTE',
+        'PD Level',
+        'Liquidity Grab',
+        'Order Block',
+        'Smart Money Concept',
+        'Double Top/Bottom',
+        'Fibonacci Retracement',
+        'EQH/EQL',
+        'Other'
+      ];
+    }
+  },
+
+  /**
+   * Get all available symbols
+   * @returns {Promise} - Response from API or default symbols
+   */
+  getSymbols: async () => {
+    try {
+      const response = await api.get('/trades/symbols');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching symbols:', error);
+      // Return default symbols if API fails
+      return ['NQ', 'ES', 'CL', 'GC', 'EURUSD', 'BTCUSD'];
+    }
   }
 };
 

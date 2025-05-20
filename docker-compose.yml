@@ -5,10 +5,12 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/app
+      - ./db_data:/db_data
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///tradingjournalapp.db
+      - DATABASE_URL=sqlite:////db_data/tradingjournalapp.db
+      - PYTHONUNBUFFERED=1
     command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -16,8 +18,8 @@ services:
       context: ./frontend-new
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend-new/src:/app/src  # Only mount the src directory
-      - ./frontend-new/public:/app/public  # Mount public directory if needed
+      - ./frontend-new:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     environment:
@@ -25,4 +27,3 @@ services:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
-    restart: always

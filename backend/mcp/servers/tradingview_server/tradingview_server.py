@@ -3,10 +3,16 @@ import logging
 import aiohttp
 import json
 import base64
-from datetime import datetime
-from fastapi import HTTPException
+from datetime import datetime, timedelta
+from fastapi import HTTPException, Body
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+import uuid
 
 from ...mcp_server import MCPServer
+from ....db.database import get_db
+from ....models.trade import Trade
+from ....models.chart_template import ChartTemplate
 
 
 class TradingViewMCPServer(MCPServer):
@@ -53,6 +59,16 @@ class TradingViewMCPServer(MCPServer):
             except Exception as e:
                 self.logger.error(f"Authentication error: {str(e)}")
                 raise HTTPException(status_code=401, detail=str(e))
+        
+        @self.app.post("/api/v1/tradingview/mark-trade")
+        async def mark_trade(trade_id: int, db: AsyncSession = get_db()):
+            """Mark a trade on a chart and save the markers"""
+            try:
+                result = await self._mark_trade(trade_id, db)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                self.logger.error(f"Trade marking error: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
 
         @self.app.get("/api/v1/tradingview/chart")
         async def get_chart(symbol: str, interval: str, study: Optional[str] = None):
@@ -103,6 +119,36 @@ class TradingViewMCPServer(MCPServer):
             except Exception as e:
                 self.logger.error(f"Get layouts error: {str(e)}")
                 raise HTTPException(status_code=400, detail=str(e))
+                
+        @self.app.post("/api/v1/tradingview/templates")
+        async def create_chart_template(template_data: Dict[str, Any] = Body(...), db: AsyncSession = get_db()):
+            """Create a new chart template"""
+            try:
+                result = await self._create_chart_template(template_data, db)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                self.logger.error(f"Create template error: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
+                
+        @self.app.get("/api/v1/tradingview/templates")
+        async def get_chart_templates(db: AsyncSession = get_db()):
+            """Get all chart templates"""
+            try:
+                templates = await self._get_chart_templates(db)
+                return {"status": "success", "data": templates}
+            except Exception as e:
+                self.logger.error(f"Get templates error: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
+                
+        @self.app.get("/api/v1/tradingview/templates/{template_id}")
+        async def get_chart_template(template_id: int, db: AsyncSession = get_db()):
+            """Get a specific chart template"""
+            try:
+                template = await self._get_chart_template(template_id, db)
+                return {"status": "success", "data": template}
+            except Exception as e:
+                self.logger.error(f"Get template error: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
 
         @self.app.post("/api/v1/tradingview/screenshot")
         async def take_screenshot(chart_id: str, width: int = 1280, height: int = 720):
@@ -112,6 +158,16 @@ class TradingViewMCPServer(MCPServer):
                 return {"status": "success", "data": screenshot}
             except Exception as e:
                 self.logger.error(f"Screenshot error: {str(e)}")
+                raise HTTPException(status_code=400, detail=str(e))
+                
+        @self.app.post("/api/v1/tradingview/trade-screenshot")
+        async def take_trade_screenshot(trade_id: int, width: int = 1280, height: int = 720, db: AsyncSession = get_db()):
+            """Take a screenshot of a chart with trade markers"""
+            try:
+                screenshot = await self._take_trade_screenshot(trade_id, width, height, db)
+                return {"status": "success", "data": screenshot}
+            except Exception as e:
+                self.logger.error(f"Trade screenshot error: {str(e)}")
                 raise HTTPException(status_code=400, detail=str(e))
 
     async def _authenticate(self, username: str, password: str) -> Dict[str, Any]:
@@ -255,4 +311,138 @@ class TradingViewMCPServer(MCPServer):
             "height": height,
             "image_data": mock_image_data,
             "format": "png"
+        }
+        
+    async def _mark_trade(self, trade_id: int, db: AsyncSession) -> Dict[str, Any]:
+        """Mark a trade on a chart with entry and exit points"""
+        # Get the trade from the database
+        result = await db.execute(select(Trade).where(Trade.id == trade_id))
+        trade = result.scalars().first()
+        
+        if not trade:
+            raise HTTPException(status_code=404, detail=f"Trade with ID {trade_id} not found")
+            
+        # Create markers for the trade
+        entry_marker = {
+            "id": f"entry_{trade_id}_{uuid.uuid4()}",
+            "time": trade.entry_time.timestamp() if trade.entry_time else datetime.now().timestamp(),
+            "price": trade.entry_price,
+            "type": "entry",
+            "color": "#4CAF50",  # Green for entry
+            "text": f"Entry: {trade.entry_price}"
+        }
+        
+        exit_marker = {
+            "id": f"exit_{trade_id}_{uuid.uuid4()}",
+            "time": trade.exit_time.timestamp() if trade.exit_time else (datetime.now() + timedelta(hours=1)).timestamp(),
+            "price": trade.exit_price,
+            "type": "exit",
+            "color": "#F44336",  # Red for exit
+            "text": f"Exit: {trade.exit_price}"
+        }
+        
+        # Add additional information
+        trade_info = {
+            "trade_id": trade.id,
+            "symbol": trade.symbol,
+            "setup_type": trade.setup_type,
+            "outcome": trade.outcome,
+            "profit_loss": trade.profit_loss,
+            "markers": [entry_marker, exit_marker]
+        }
+        
+        return trade_info
+    
+    async def _take_trade_screenshot(self, trade_id: int, width: int, height: int, db: AsyncSession) -> Dict[str, Any]:
+        """Take a screenshot of a chart with trade markers"""
+        # Get the trade from the database
+        result = await db.execute(select(Trade).where(Trade.id == trade_id))
+        trade = result.scalars().first()
+        
+        if not trade:
+            raise HTTPException(status_code=404, detail=f"Trade with ID {trade_id} not found")
+            
+        # Generate a screenshot with trade markers
+        trade_markers = await self._mark_trade(trade_id, db)
+        
+        # Mock screenshot data
+        mock_image_data = base64.b64encode(b"trade_screenshot_data").decode("utf-8")
+        
+        return {
+            "trade_id": trade_id,
+            "symbol": trade.symbol,
+            "timestamp": datetime.now().timestamp(),
+            "width": width,
+            "height": height,
+            "image_data": mock_image_data,
+            "format": "png",
+            "markers": trade_markers["markers"]
+        }
+    
+    async def _create_chart_template(self, template_data: Dict[str, Any], db: AsyncSession) -> Dict[str, Any]:
+        """Create a new chart template"""
+        new_template = ChartTemplate(
+            name=template_data.get("name", "Unnamed Template"),
+            description=template_data.get("description", ""),
+            symbol=template_data.get("symbol", "NQ"),
+            interval=template_data.get("interval", "1D"),
+            user_id=template_data.get("user_id", 1),  # Default user ID
+            template_data=template_data.get("template_data", {}),
+            indicators=template_data.get("indicators", []),
+            drawing_tools=template_data.get("drawing_tools", []),
+            is_public=template_data.get("is_public", False)
+        )
+        
+        db.add(new_template)
+        await db.commit()
+        await db.refresh(new_template)
+        
+        return {
+            "id": new_template.id,
+            "name": new_template.name,
+            "symbol": new_template.symbol,
+            "interval": new_template.interval,
+            "created_at": new_template.created_at.timestamp() if new_template.created_at else datetime.now().timestamp()
+        }
+    
+    async def _get_chart_templates(self, db: AsyncSession) -> List[Dict[str, Any]]:
+        """Get all chart templates"""
+        result = await db.execute(select(ChartTemplate))
+        templates = result.scalars().all()
+        
+        return [
+            {
+                "id": template.id,
+                "name": template.name,
+                "description": template.description,
+                "symbol": template.symbol,
+                "interval": template.interval,
+                "user_id": template.user_id,
+                "is_public": template.is_public,
+                "created_at": template.created_at.timestamp() if template.created_at else None,
+                "updated_at": template.updated_at.timestamp() if template.updated_at else None
+            } for template in templates
+        ]
+    
+    async def _get_chart_template(self, template_id: int, db: AsyncSession) -> Dict[str, Any]:
+        """Get a specific chart template"""
+        result = await db.execute(select(ChartTemplate).where(ChartTemplate.id == template_id))
+        template = result.scalars().first()
+        
+        if not template:
+            raise HTTPException(status_code=404, detail=f"Template with ID {template_id} not found")
+            
+        return {
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "symbol": template.symbol,
+            "interval": template.interval,
+            "user_id": template.user_id,
+            "template_data": template.template_data,
+            "indicators": template.indicators,
+            "drawing_tools": template.drawing_tools,
+            "is_public": template.is_public,
+            "created_at": template.created_at.timestamp() if template.created_at else None,
+            "updated_at": template.updated_at.timestamp() if template.updated_at else None
         }

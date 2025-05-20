@@ -21,7 +21,6 @@ export default defineConfig({
       }
     }
   },
-  // Optimize dependency prebundling
   optimizeDeps: {
     include: [
       'react', 
@@ -30,19 +29,25 @@ export default defineConfig({
       '@mui/material',
       '@mui/icons-material',
       '@emotion/react',
-      '@emotion/styled'
+      '@emotion/styled',
+      'firebase/app',
+      'firebase/firestore',
+      'firebase/analytics'
     ],
     force: true
   },
-  // Improve build performance
   build: {
     commonjsOptions: {
       transformMixedEsModules: true
     },
     sourcemap: true
   },
-  // Fix source map errors
   resolve: {
-    dedupe: ['react', 'react-dom']
+    dedupe: ['react', 'react-dom'],
+    alias: {
+      // Add aliases for contexts to help with import resolution
+      '@contexts': '/app/src/contexts',
+      '@components': '/app/src/components'
+    }
   }
 });

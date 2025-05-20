@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query, Path
 from typing import Dict, Any, List, Optional
 
-from ..api.utils.helpers import get_current_user
-from ..services.cloud_service import CloudSyncManager
+from ..utils.helpers import get_current_user
+from ...services.cloud_service import CloudSyncManager
 
 router = APIRouter()
 cloud_sync_manager = None

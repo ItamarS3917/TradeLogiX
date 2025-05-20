@@ -1,4 +1,7 @@
+// Firebase Authentication Context
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { app, auth } from '../config/firebase';
 
 // Create the authentication context
 export const AuthContext = createContext(null);
@@ -12,56 +15,89 @@ export const useAuth = () => {
   return context;
 };
 
-// Authentication provider component
+// Authentication provider component - using Firebase Auth
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Load user data on initial render or when token changes
+  // Load user data on initial render
   useEffect(() => {
-    if (token) {
-      // TODO: Replace with actual API call to get user data
-      // Simulating user data fetch
-      setTimeout(() => {
+    // Set up observer on auth state
+    const unsubscribe = auth.onAuthStateChanged(firebaseUser => {
+      if (firebaseUser) {
+        // User is signed in
+        setToken(firebaseUser.accessToken);
         setUser({
-          id: '123',
-          email: 'user@example.com',
-          name: 'Test User'
+          id: firebaseUser.uid, // Use Firebase UID as user ID
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || 'Trading User'
         });
-        setIsLoading(false);
-      }, 500);
-    } else {
-      setUser(null);
+        console.log('User authenticated:', firebaseUser.uid);
+      } else {
+        // User is signed out
+        setToken(null);
+        setUser(null);
+        console.log('No user authenticated');
+      }
       setIsLoading(false);
-    }
-  }, [token]);
-
-  // Login function
-  const login = async (email, password) => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Simulating successful login
-        const newToken = 'test-auth-token';
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-        resolve(true);
-      }, 1000);
     });
+    
+    // Clean up observer
+    return () => unsubscribe();
+  }, []);
+
+  // Login function using Firebase
+  const login = async (email, password) => {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+    
+    try {
+      console.log('Attempting to log in with Firebase Auth...');
+      // Use Firebase authentication
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login successful', userCredential.user.uid);
+      return userCredential.user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
-  // Logout function
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+  // Register function using Firebase
+  const register = async (email, password) => {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+    
+    try {
+      console.log('Attempting to register with Firebase Auth...');
+      // Use Firebase to create a new user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('Registration successful', userCredential.user.uid);
+      return userCredential.user;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
+  // Logout function using Firebase
+  const logout = async () => {
+    try {
+      console.log('Attempting to sign out...');
+      await signOut(auth);
+      console.log('Sign out successful');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    // For development, always return true to bypass authentication
-    return true; // Change this to "return !!token;" when ready for real authentication
+    return !!user;
   };
 
   // Context value
@@ -71,6 +107,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
+    register,
     isAuthenticated
   };
 

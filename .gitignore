@@ -67,3 +67,7 @@ frontend/node_modules/
 # Backup files
 *-backup/
 *_backup/
+
+# Firebase credentials
+firebase-credentials.json
+

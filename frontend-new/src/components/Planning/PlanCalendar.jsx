@@ -20,7 +20,7 @@ import {
   Today as TodayIcon
 } from '@mui/icons-material';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths, isSameMonth } from 'date-fns';
-import planningService from '../../services/planningService';
+import { useFirebase } from '../../contexts/FirebaseContext';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 
 // Helper function to convert market bias to icon
@@ -44,7 +44,11 @@ const PlanCalendar = ({ onSelectDate, selectedDate }) => {
   const [loading, setLoading] = useState(false);
   const [monthPlans, setMonthPlans] = useState([]);
   
+  // Get Firebase operations from context
+  const firebase = useFirebase();
+  
   useEffect(() => {
+    console.log("PlanCalendar: Using Firebase context");
     fetchMonthPlans();
   }, [currentMonth]);
   
@@ -52,18 +56,25 @@ const PlanCalendar = ({ onSelectDate, selectedDate }) => {
   const fetchMonthPlans = async () => {
     setLoading(true);
     try {
-      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      console.log('Fetching plans for month:', format(currentMonth, 'MMMM yyyy'));
       
-      const plans = await planningService.getAllDailyPlans({
-        start_date: start,
-        end_date: end
-      });
+      const start = startOfMonth(currentMonth);
+      const end = endOfMonth(currentMonth);
       
-      setMonthPlans(plans);
+      const filters = {
+        start_date: format(start, 'yyyy-MM-dd'),
+        end_date: format(end, 'yyyy-MM-dd')
+      };
+      
+      console.log('Fetching with filters:', filters);
+      const plans = await firebase.getAllDailyPlans(filters);
+      console.log('Fetched month plans:', plans);
+      
+      setMonthPlans(plans || []);
     } catch (error) {
       console.error('Error fetching plans:', error);
-      showSnackbar('Failed to load plans for this month', 'error');
+      showSnackbar('Failed to load plans for this month: ' + (error.message || 'Unknown error'), 'error');
+      setMonthPlans([]);
     } finally {
       setLoading(false);
     }
@@ -118,13 +129,19 @@ const PlanCalendar = ({ onSelectDate, selectedDate }) => {
   // Determine if a day has a plan
   const hasPlan = (day) => {
     if (!day) return false;
-    return monthPlans.some(plan => isSameDay(new Date(plan.date), day));
+    return monthPlans.some(plan => {
+      const planDate = new Date(plan.date);
+      return isSameDay(planDate, day);
+    });
   };
   
   // Get plan details for a specific day
   const getPlanForDay = (day) => {
     if (!day) return null;
-    return monthPlans.find(plan => isSameDay(new Date(plan.date), day));
+    return monthPlans.find(plan => {
+      const planDate = new Date(plan.date);
+      return isSameDay(planDate, day);
+    });
   };
   
   // Render calendar cell for a day

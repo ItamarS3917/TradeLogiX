@@ -1,5 +1,6 @@
 import ResponsiveContainer from './ResponsiveContainer';
 import ResponsiveGrid from './ResponsiveGrid';
+import ResponsiveTouchContainer from './ResponsiveTouchContainer';
 import { 
   MobileOnly, 
   TabletOnly, 
@@ -12,6 +13,7 @@ import {
 export {
   ResponsiveContainer,
   ResponsiveGrid,
+  ResponsiveTouchContainer,
   MobileOnly,
   TabletOnly,
   DesktopOnly,

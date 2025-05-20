@@ -9,11 +9,13 @@ from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
+import json
 
 from ..db.repository import Repository
 from ..models.trade import Trade
 from ..db.schemas import TradeCreate, TradeUpdate, TradeStatistics
 from ..mcp.tools.trade_categorization import get_trade_analysis_client
+from ..utils.date_helpers import parse_date_string
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +51,21 @@ class TradeService:
         Returns:
             Trade: Created trade
         """
+        # Ensure datetime fields are proper datetime objects
+        if hasattr(trade_data, 'entry_time') and isinstance(trade_data.entry_time, str):
+            parsed_date = parse_date_string(trade_data.entry_time)
+            if parsed_date:
+                trade_data.entry_time = parsed_date
+        
+        if hasattr(trade_data, 'exit_time') and isinstance(trade_data.exit_time, str):
+            parsed_date = parse_date_string(trade_data.exit_time)
+            if parsed_date:
+                trade_data.exit_time = parsed_date
+                
+        # Log data for debugging
+        logger.info(f"Creating trade with processed entry_time: {trade_data.entry_time} (type: {type(trade_data.entry_time)})")
+        logger.info(f"Creating trade with processed exit_time: {trade_data.exit_time} (type: {type(trade_data.exit_time)})")
+                
         trade = self.repository.create(trade_data)
         
         # Analyze trade using MCP if available
@@ -158,6 +175,23 @@ class TradeService:
         Returns:
             Optional[Trade]: Updated trade if found, None otherwise
         """
+        # Ensure datetime fields are proper datetime objects
+        if hasattr(trade_data, 'entry_time') and trade_data.entry_time and isinstance(trade_data.entry_time, str):
+            parsed_date = parse_date_string(trade_data.entry_time)
+            if parsed_date:
+                trade_data.entry_time = parsed_date
+        
+        if hasattr(trade_data, 'exit_time') and trade_data.exit_time and isinstance(trade_data.exit_time, str):
+            parsed_date = parse_date_string(trade_data.exit_time)
+            if parsed_date:
+                trade_data.exit_time = parsed_date
+                
+        # Log data for debugging
+        if hasattr(trade_data, 'entry_time') and trade_data.entry_time:
+            logger.info(f"Updating trade with processed entry_time: {trade_data.entry_time} (type: {type(trade_data.entry_time)})")
+        if hasattr(trade_data, 'exit_time') and trade_data.exit_time:
+            logger.info(f"Updating trade with processed exit_time: {trade_data.exit_time} (type: {type(trade_data.exit_time)})")
+                
         return self.repository.update(trade_id, trade_data)
     
     def delete_trade(self, trade_id: int) -> bool:

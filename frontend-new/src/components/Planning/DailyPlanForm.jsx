@@ -34,6 +34,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
+import { useFirebase } from '../../contexts/FirebaseContext';
 
 // Validation schema
 const validationSchema = yup.object().shape({
@@ -73,6 +74,7 @@ const mentalStateOptions = [
 
 const DailyPlanForm = ({ initialData = null, onSubmit, isLoading }) => {
   const { showSnackbar } = useSnackbar();
+  const firebase = useFirebase();
   
   // State for key levels
   const [keyLevels, setKeyLevels] = useState(
@@ -122,9 +124,11 @@ const DailyPlanForm = ({ initialData = null, onSubmit, isLoading }) => {
       ...data,
       key_levels: keyLevelsObj,
       goals: goals,
-      risk_parameters: riskParamsObj
+      risk_parameters: riskParamsObj,
+      user_id: '1' // Default user ID until we implement authentication
     };
     
+    console.log('Submitting daily plan:', finalData);
     onSubmit(finalData);
   };
   

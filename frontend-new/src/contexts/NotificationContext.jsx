@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext } from 'react';
-import { Snackbar, Alert } from '@mui/material';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Snackbar, Alert, Button } from '@mui/material';
 
 // Create the notification context
 export const NotificationContext = createContext(null);
@@ -19,33 +19,57 @@ export const NotificationProvider = ({ children }) => {
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState('info'); // 'success', 'error', 'warning', 'info'
   const [autoHideDuration, setAutoHideDuration] = useState(6000);
+  const [action, setAction] = useState(null);
   
-  // Show notification
-  const showNotification = (newMessage, newSeverity = 'info', newAutoHideDuration = 6000) => {
+  // Show notification with optional action button
+  const showNotification = (
+    newMessage, 
+    newSeverity = 'info', 
+    newAutoHideDuration = 6000,
+    newAction = null
+  ) => {
     setMessage(newMessage);
     setSeverity(newSeverity);
     setAutoHideDuration(newAutoHideDuration);
+    setAction(newAction);
     setOpen(true);
   };
   
-  // Show success notification
-  const showSuccess = (newMessage, newAutoHideDuration = 6000) => {
-    showNotification(newMessage, 'success', newAutoHideDuration);
+  // Show success notification with optional action
+  const showSuccess = (newMessage, newAutoHideDuration = 6000, newAction = null) => {
+    showNotification(newMessage, 'success', newAutoHideDuration, newAction);
   };
   
-  // Show error notification
-  const showError = (newMessage, newAutoHideDuration = 6000) => {
-    showNotification(newMessage, 'error', newAutoHideDuration);
+  // Show error notification with optional action
+  const showError = (newMessage, newAutoHideDuration = 6000, newAction = null) => {
+    showNotification(newMessage, 'error', newAutoHideDuration, newAction);
   };
   
-  // Show warning notification
-  const showWarning = (newMessage, newAutoHideDuration = 6000) => {
-    showNotification(newMessage, 'warning', newAutoHideDuration);
+  // Show warning notification with optional action
+  const showWarning = (newMessage, newAutoHideDuration = 6000, newAction = null) => {
+    showNotification(newMessage, 'warning', newAutoHideDuration, newAction);
   };
   
-  // Show info notification
-  const showInfo = (newMessage, newAutoHideDuration = 6000) => {
-    showNotification(newMessage, 'info', newAutoHideDuration);
+  // Show info notification with optional action
+  const showInfo = (newMessage, newAutoHideDuration = 6000, newAction = null) => {
+    showNotification(newMessage, 'info', newAutoHideDuration, newAction);
+  };
+
+  // Schedule a notification for future delivery
+  const scheduleNotification = (message, severity, delay) => {
+    const timerId = setTimeout(() => {
+      showNotification(message, severity);
+    }, delay);
+    return timerId;
+  };
+
+  // Cancel a scheduled notification
+  const cancelScheduledNotification = (timerId) => {
+    if (timerId) {
+      clearTimeout(timerId);
+      return true;
+    }
+    return false;
   };
   
   // Close notification
@@ -60,7 +84,12 @@ export const NotificationProvider = ({ children }) => {
     showError,
     showWarning,
     showInfo,
-    closeNotification
+    closeNotification,
+    scheduleNotification,
+    cancelScheduledNotification,
+    notificationPermission: 'default',
+    enabledNotificationChannels: { inApp: true, browser: false, email: false, sms: false },
+    toggleNotificationChannel: () => true
   };
   
   return (
@@ -72,7 +101,19 @@ export const NotificationProvider = ({ children }) => {
         onClose={closeNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={closeNotification} severity={severity} variant="filled">
+        <Alert 
+          onClose={closeNotification} 
+          severity={severity} 
+          variant="filled"
+          action={action ? (
+            <Button color="inherit" size="small" onClick={() => {
+              action.onClick();
+              closeNotification();
+            }}>
+              {action.label}
+            </Button>
+          ) : null}
+        >
           {message}
         </Alert>
       </Snackbar>

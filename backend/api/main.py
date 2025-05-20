@@ -1,11 +1,13 @@
 # File: backend/api/main.py
 # Purpose: Main FastAPI application entry point for the Trading Journal API
 
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # Import routes
-from .routes import users, trades, plans, journals, statistics, alerts, tradesage, cloud_sync
+from .routes import users, trades, plans, journals, statistics, alerts, tradesage, cloud_sync, assets, uploads
 
 # Import database
 from ..db.database import get_db, initialize_db
@@ -34,6 +36,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files directories
+def setup_static_directories():
+    os.makedirs("static", exist_ok=True)
+    os.makedirs("static/screenshots", exist_ok=True)
+    os.makedirs("cloud_storage", exist_ok=True)
+    
+    # Mount static directories
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/cloud_storage", StaticFiles(directory="cloud_storage"), name="cloud_storage")
+
+setup_static_directories()
+
 # Initialize database and MCP servers on startup
 @app.on_event("startup")
 async def startup_event():
@@ -51,12 +65,14 @@ async def startup_event():
 # Include routes
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(trades.router, prefix="/api/trades", tags=["trades"])
+app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
 app.include_router(plans.router, prefix="/api/plans", tags=["plans"])
 app.include_router(journals.router, prefix="/api/journals", tags=["journals"])
 app.include_router(statistics.router, prefix="/api/statistics", tags=["statistics"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(tradesage.router, prefix="/api/tradesage", tags=["tradesage"])
 app.include_router(cloud_sync.router, prefix="/api/cloud-sync", tags=["cloud-sync"])
+app.include_router(uploads.router, prefix="/api/uploads", tags=["uploads"])
 
 # Root endpoint
 @app.get("/")
@@ -64,7 +80,7 @@ async def root():
     return {"message": "Welcome to the Trading Journal API"}
 
 # Health check endpoint
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "healthy"}
 
@@ -96,6 +112,7 @@ async def api_info():
         "endpoints": {
             "users": "/api/users",
             "trades": "/api/trades",
+            "assets": "/api/assets",
             "plans": "/api/plans",
             "journals": "/api/journals",
             "statistics": "/api/statistics",

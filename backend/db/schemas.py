@@ -45,8 +45,8 @@ class TradeBase(BaseModel):
     entry_price: float
     exit_price: float
     position_size: float
-    entry_time: datetime
-    exit_time: datetime
+    entry_time: Union[datetime, str]  # Accept both datetime objects and strings
+    exit_time: Union[datetime, str]   # Accept both datetime objects and strings
     planned_risk_reward: Optional[float] = None
     actual_risk_reward: Optional[float] = None
     outcome: str  # Win/Loss/Breakeven
@@ -56,6 +56,31 @@ class TradeBase(BaseModel):
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
     daily_plan_id: Optional[int] = None
+    
+    # Convert datetime string to actual datetime object during validation
+    @model_validator(mode='after')
+    def validate_datetimes(self) -> Self:
+        if isinstance(self.entry_time, str):
+            try:
+                if self.entry_time.endswith('Z'):
+                    # Convert 'Z' to +00:00 for better compatibility
+                    self.entry_time = self.entry_time[:-1] + '+00:00'
+                self.entry_time = datetime.fromisoformat(self.entry_time)
+            except (ValueError, TypeError):
+                # Keep as is and let the repository handle it
+                pass
+                
+        if isinstance(self.exit_time, str):
+            try:
+                if self.exit_time.endswith('Z'):
+                    # Convert 'Z' to +00:00 for better compatibility
+                    self.exit_time = self.exit_time[:-1] + '+00:00'
+                self.exit_time = datetime.fromisoformat(self.exit_time)
+            except (ValueError, TypeError):
+                # Keep as is and let the repository handle it
+                pass
+                
+        return self
 
 class TradeCreate(TradeBase):
     """Schema for trade creation request"""
@@ -323,6 +348,34 @@ class TradeStatistics(BaseModel):
     setup_performance: Dict[str, Dict[str, Any]]
     emotional_state_performance: Dict[str, Dict[str, Any]]
     plan_adherence_performance: Dict[str, Dict[str, Any]]
+
+# ======== Chart Template Schemas ========
+
+class ChartTemplateBase(BaseModel):
+    """Base schema for chart template data"""
+    name: str
+    description: Optional[str] = None
+    config: Dict[str, Any]
+
+class ChartTemplateCreate(ChartTemplateBase):
+    """Schema for creating a new chart template"""
+    pass
+
+class ChartTemplateUpdate(BaseModel):
+    """Schema for updating an existing chart template"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+
+class ChartTemplateResponse(ChartTemplateBase):
+    """Schema for chart template responses"""
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
 
 # ======== Authentication Schemas ========
 

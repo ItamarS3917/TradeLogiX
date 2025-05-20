@@ -282,7 +282,7 @@ const OverviewStats = ({ stats }) => {
               <Bar 
                 dataKey="pnl" 
                 name="P&L"
-                fill="#8884d8"
+                
                 // Use dynamic colors based on P&L value
                 isAnimationActive={false}
                 fill={(entry) => entry.pnl >= 0 ? '#4caf50' : '#f44336'}

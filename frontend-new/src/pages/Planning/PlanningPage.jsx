@@ -22,7 +22,8 @@ import {
 import DailyPlanForm from '../../components/Planning/DailyPlanForm';
 import PlanCalendar from '../../components/Planning/PlanCalendar';
 import PlanDetail from '../../components/Planning/PlanDetail';
-import planningService from '../../services/planningService';
+// Import Firebase context hook
+import { useFirebase } from '../../contexts/FirebaseContext';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import { format, isSameDay } from 'date-fns';
 
@@ -36,7 +37,12 @@ const PlanningPage = () => {
   const [planLoading, setPlanLoading] = useState(false);
   const [todaysPlan, setTodaysPlan] = useState(null);
   
+  // Get Firebase operations from context
+  const firebase = useFirebase();
+  
   useEffect(() => {
+    console.log("PlanningPage initialized, using Firebase context");
+    
     checkTodaysPlan();
     if (selectedDate) {
       fetchPlanForDate(selectedDate);
@@ -46,15 +52,14 @@ const PlanningPage = () => {
   // Check if there's a plan for today
   const checkTodaysPlan = async () => {
     try {
+      console.log('Checking today\'s plan');
       const today = new Date();
       const formattedDate = format(today, 'yyyy-MM-dd');
-      const plan = await planningService.getDailyPlanByDate(formattedDate);
+      const plan = await firebase.getDailyPlanByDate(formattedDate);
+      console.log('Today\'s plan:', plan);
       setTodaysPlan(plan);
     } catch (error) {
-      // If 404, no plan exists which is fine
-      if (error.response && error.response.status !== 404) {
-        console.error('Error checking today\'s plan:', error);
-      }
+      console.error('Error checking today\'s plan:', error);
     }
   };
   
@@ -62,17 +67,15 @@ const PlanningPage = () => {
   const fetchPlanForDate = async (date) => {
     setPlanLoading(true);
     try {
+      console.log('Fetching plan for date:', format(date, 'yyyy-MM-dd'));
       const formattedDate = format(date, 'yyyy-MM-dd');
-      const plan = await planningService.getDailyPlanByDate(formattedDate);
+      const plan = await firebase.getDailyPlanByDate(formattedDate);
+      console.log('Fetched plan:', plan);
       setSelectedPlan(plan);
     } catch (error) {
-      // If 404, no plan exists which is fine
-      if (error.response && error.response.status !== 404) {
-        console.error('Error fetching plan:', error);
-        showSnackbar('Failed to load plan for this date', 'error');
-      } else {
-        setSelectedPlan(null);
-      }
+      console.error('Error fetching plan:', error);
+      showSnackbar('Failed to load plan for this date: ' + (error.message || 'Unknown error'), 'error');
+      setSelectedPlan(null);
     } finally {
       setPlanLoading(false);
     }
@@ -88,7 +91,10 @@ const PlanningPage = () => {
     setIsEditing(false);
     // Pre-set the selected date
     const initialData = {
-      date: selectedDate
+      date: selectedDate,
+      user_id: '1', // Default user ID
+      key_levels: [],
+      goals: []
     };
     setSelectedPlan(initialData);
     setFormDialogOpen(true);
@@ -105,11 +111,16 @@ const PlanningPage = () => {
   const handleSubmitPlan = async (data) => {
     setLoading(true);
     try {
+      console.log('Submitting plan:', data);
+      
       if (isEditing) {
-        await planningService.updateDailyPlan(selectedPlan.id, data);
+        console.log('Updating plan with ID:', selectedPlan.id);
+        await firebase.updateDailyPlan(selectedPlan.id, data);
         showSnackbar('Plan updated successfully', 'success');
       } else {
-        await planningService.createDailyPlan(data);
+        console.log('Creating new plan');
+        const result = await firebase.createDailyPlan(data);
+        console.log('Plan created:', result);
         showSnackbar('Plan created successfully', 'success');
       }
       setFormDialogOpen(false);
@@ -119,7 +130,7 @@ const PlanningPage = () => {
       checkTodaysPlan();
     } catch (error) {
       console.error('Error saving plan:', error);
-      showSnackbar('Failed to save plan', 'error');
+      showSnackbar('Failed to save plan: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoading(false);
     }
@@ -129,13 +140,14 @@ const PlanningPage = () => {
   const handleDeletePlan = async (id) => {
     if (window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
       try {
-        await planningService.deleteDailyPlan(id);
+        console.log('Deleting plan with ID:', id);
+        await firebase.deleteDailyPlan(id);
         showSnackbar('Plan deleted successfully', 'success');
         setSelectedPlan(null);
         checkTodaysPlan();
       } catch (error) {
         console.error('Error deleting plan:', error);
-        showSnackbar('Failed to delete plan', 'error');
+        showSnackbar('Failed to delete plan: ' + (error.message || 'Unknown error'), 'error');
       }
     }
   };

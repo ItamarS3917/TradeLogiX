@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -25,6 +25,12 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useSnackbar } from '../../contexts/SnackbarContext';
+import { useFirebase } from '../../contexts/FirebaseContext';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth to get the current user
+import ImageUploader from './ImageUploader';
+
+// Import enums for trade form
+import { PLAN_ADHERENCE, EMOTIONAL_STATE, TRADE_OUTCOME, numericToPlanAdherence, numericToEmotionalState } from '../../constants/tradeEnums';
 
 // Define validation schema using yup
 const validationSchema = yup.object().shape({
@@ -77,8 +83,11 @@ const emotionalStates = [
 
 const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
   const { showSnackbar } = useSnackbar();
+  const firebase = useFirebase();
+  const { user } = useAuth(); // Get the authenticated user
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState(initialData?.tags || []);
+  const [screenshots, setScreenshots] = useState(initialData?.screenshots || []);
   
   // Initialize react-hook-form
   const { control, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
@@ -117,7 +126,45 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
   // Handle form submission
   const handleFormSubmit = (data) => {
     data.tags = tags;
+    data.screenshots = screenshots;
+    
+    // Use the authenticated user's ID from Firebase
+    data.user_id = user?.id || 'anonymous';
+    
+    console.log('Adding trade for user ID:', data.user_id);
+    
+    // Convert numeric plan_adherence to enum string if needed
+    if (data.plan_adherence && typeof data.plan_adherence === 'number') {
+      data.plan_adherence = numericToPlanAdherence[data.plan_adherence] || "FOLLOWED";
+    }
+    
+    // Convert numeric emotional_state to enum string if needed
+    if (data.emotional_state && typeof data.emotional_state === 'number') {
+      data.emotional_state = numericToEmotionalState[data.emotional_state] || "CALM";
+    }
+    
+    // Validate numbers
+    data.entry_price = parseFloat(data.entry_price);
+    data.exit_price = parseFloat(data.exit_price);
+    data.position_size = parseFloat(data.position_size);
+    data.profit_loss = parseFloat(data.profit_loss);
+    
+    if (data.planned_risk_reward) {
+      data.planned_risk_reward = parseFloat(data.planned_risk_reward);
+    }
+    
+    if (data.actual_risk_reward) {
+      data.actual_risk_reward = parseFloat(data.actual_risk_reward);
+    }
+    
+    console.log('Submitting trade with data:', data);
     onSubmit(data);
+  };
+  
+  // Handle screenshot uploads
+  const handleScreenshotsUpdate = (newScreenshots) => {
+    setScreenshots(newScreenshots);
+    setValue('screenshots', newScreenshots);
   };
 
   // Handle adding tags
@@ -292,14 +339,16 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
                     label="Entry Time"
                     value={field.value}
                     onChange={field.onChange}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        fullWidth
-                        error={!!errors.entry_time}
-                        helperText={errors.entry_time?.message}
-                      />
-                    )}
+                    slots={{
+                      textField: (params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          error={!!errors.entry_time}
+                          helperText={errors.entry_time?.message}
+                        />
+                      )
+                    }}
                   />
                 )}
               />
@@ -317,14 +366,16 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
                     label="Exit Time"
                     value={field.value}
                     onChange={field.onChange}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        fullWidth
-                        error={!!errors.exit_time}
-                        helperText={errors.exit_time?.message}
-                      />
-                    )}
+                    slots={{
+                      textField: (params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          error={!!errors.exit_time}
+                          helperText={errors.exit_time?.message}
+                        />
+                      )
+                    }}
                   />
                 )}
               />
@@ -511,6 +562,14 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
                 />
               ))}
             </Stack>
+          </Grid>
+          
+          {/* Screenshots */}
+          <Grid item xs={12}>
+            <ImageUploader 
+              onUploadComplete={handleScreenshotsUpdate} 
+              initialImages={screenshots}
+            />
           </Grid>
 
           {/* Submit Button */}

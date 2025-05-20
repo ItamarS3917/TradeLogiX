@@ -1,10 +1,11 @@
 # File: backend/api/routes/trades.py
 # Purpose: API endpoints for trade management
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import date
+import logging
 
 # Import database session
 from ...db.database import get_db
@@ -15,6 +16,10 @@ from ...services.trade_service import *
 # Import schemas (will implement later)
 from ...db.schemas import TradeCreate, TradeResponse, TradeUpdate, TradeStatistics
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 @router.post("/", response_model=TradeResponse, status_code=status.HTTP_201_CREATED)
@@ -24,9 +29,19 @@ async def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
     """
     trade_service = TradeService(db)
     try:
-        return trade_service.create_trade(trade)
+        # Log the trade data for debugging
+        logger.info(f"Creating trade with screenshots: {trade.screenshots}")
+        logger.info(f"Creating trade with tags: {trade.tags}")
+        
+        created_trade = trade_service.create_trade(trade)
+        logger.info(f"Trade created with ID: {created_trade.id}, screenshots: {created_trade.screenshots}")
+        return created_trade
     except ValueError as e:
+        logger.error(f"Error creating trade: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error creating trade: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.get("/", response_model=List[TradeResponse])
 async def get_trades(
@@ -72,10 +87,20 @@ async def update_trade(trade_id: int, trade_update: TradeUpdate, db: Session = D
     Update trade
     """
     trade_service = TradeService(db)
-    trade = trade_service.update_trade(trade_id, trade_update)
-    if not trade:
-        raise HTTPException(status_code=404, detail="Trade not found")
-    return trade
+    try:
+        # Log the trade data for debugging
+        logger.info(f"Updating trade {trade_id} with screenshots: {trade_update.screenshots}")
+        logger.info(f"Updating trade {trade_id} with tags: {trade_update.tags}")
+        
+        trade = trade_service.update_trade(trade_id, trade_update)
+        if not trade:
+            raise HTTPException(status_code=404, detail="Trade not found")
+            
+        logger.info(f"Trade updated with ID: {trade.id}, screenshots: {trade.screenshots}")
+        return trade
+    except Exception as e:
+        logger.error(f"Error updating trade: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.delete("/{trade_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_trade(trade_id: int, db: Session = Depends(get_db)):

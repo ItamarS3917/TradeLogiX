@@ -5,11 +5,15 @@ from typing import Generic, Type, TypeVar, List, Optional, Any, Dict
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
+import json
+from datetime import datetime
 
 from .database import Base
 from ..models.trade import Trade
 from ..models.user import User
 from ..models.journal import Journal
+from ..utils.json_helpers import process_json_field
+from ..utils.date_helpers import parse_date_string
 
 # Define generic types for models and schemas
 ModelType = TypeVar("ModelType", bound=Base)
@@ -72,6 +76,29 @@ class Repository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # Convert Pydantic model to dict
         obj_in_data = jsonable_encoder(obj_in)
         
+        # Handle field name mapping for Trade model
+        if self.model.__name__ == "Trade" and "daily_plan_id" in obj_in_data:
+            obj_in_data["related_plan_id"] = obj_in_data.pop("daily_plan_id")
+        
+        # Process JSON fields for Trade model
+        if self.model.__name__ == "Trade":
+            # Process JSON fields
+            if "screenshots" in obj_in_data:
+                obj_in_data["screenshots"] = process_json_field(obj_in_data["screenshots"])
+            if "tags" in obj_in_data:
+                obj_in_data["tags"] = process_json_field(obj_in_data["tags"])
+            
+            # Process datetime fields
+            if "entry_time" in obj_in_data and isinstance(obj_in_data["entry_time"], str):
+                parsed_date = parse_date_string(obj_in_data["entry_time"])
+                if parsed_date:
+                    obj_in_data["entry_time"] = parsed_date
+            
+            if "exit_time" in obj_in_data and isinstance(obj_in_data["exit_time"], str):
+                parsed_date = parse_date_string(obj_in_data["exit_time"])
+                if parsed_date:
+                    obj_in_data["exit_time"] = parsed_date
+        
         # Create model instance
         db_obj = self.model(**obj_in_data)
         
@@ -101,6 +128,29 @@ class Repository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         
         # Convert Pydantic model to dict
         obj_in_data = jsonable_encoder(obj_in)
+        
+        # Handle field name mapping for Trade model
+        if self.model.__name__ == "Trade" and "daily_plan_id" in obj_in_data:
+            obj_in_data["related_plan_id"] = obj_in_data.pop("daily_plan_id")
+        
+        # Process JSON fields and datetime for Trade model
+        if self.model.__name__ == "Trade":
+            # Process JSON fields
+            if "screenshots" in obj_in_data and obj_in_data["screenshots"] is not None:
+                obj_in_data["screenshots"] = process_json_field(obj_in_data["screenshots"])
+            if "tags" in obj_in_data and obj_in_data["tags"] is not None:
+                obj_in_data["tags"] = process_json_field(obj_in_data["tags"])
+            
+            # Process datetime fields
+            if "entry_time" in obj_in_data and isinstance(obj_in_data["entry_time"], str):
+                parsed_date = parse_date_string(obj_in_data["entry_time"])
+                if parsed_date:
+                    obj_in_data["entry_time"] = parsed_date
+            
+            if "exit_time" in obj_in_data and isinstance(obj_in_data["exit_time"], str):
+                parsed_date = parse_date_string(obj_in_data["exit_time"])
+                if parsed_date:
+                    obj_in_data["exit_time"] = parsed_date
         
         # Update model instance
         for field, value in obj_in_data.items():

@@ -26,10 +26,12 @@ class User(Base):
     
     # Relationships
     trades = relationship("Trade", back_populates="user")
+    assets = relationship("Asset", back_populates="user")
     daily_plans = relationship("DailyPlan", back_populates="user")
     journals = relationship("Journal", back_populates="user")
     alerts = relationship("Alert", back_populates="user")
     preferences_obj = relationship("Preferences", back_populates="user", uselist=False)
+    chart_templates = relationship("ChartTemplate", back_populates="user")
     
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username})>"
