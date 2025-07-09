@@ -80,3 +80,25 @@ tmp/
 # Firebase credentials
 firebase-credentials.json
 
+
+# Additional cleanup rules
+*.sh
+install_dependencies.py
+playwright.config.js
+cloud_sync.db
+commit_all_changes.sh
+fix_github_push.sh
+git_add_commit.sh
+push_to_github.sh
+quick_push_fix.sh
+setup_git_github.sh
+
+# Backup directories
+backups/
+clean-repo/
+project images/
+
+# Temporary files
+*.tmp
+*.bak
+*_backup*
