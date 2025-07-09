@@ -8,7 +8,7 @@ from sqlalchemy import desc
 
 from ..db.schemas import JournalCreate, JournalUpdate, JournalResponse
 from ..models.journal import Journal
-from ..mcp.tools.sentiment_analysis import analyze_sentiment
+# from ..mcp.tools.sentiment_analysis import analyze_sentiment
 
 class JournalService:
     """Service for managing journal entries"""

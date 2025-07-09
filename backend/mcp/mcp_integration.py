@@ -15,6 +15,7 @@ from .servers.trade_analysis_server import TradeAnalysisServer
 from .servers.sentiment_analysis import SentimentAnalysisServer
 from .servers.alert_server import AlertServer
 from .servers.preferences_server import PreferencesServer
+# # from .servers.backtest_server import BacktestMCPServer
 from .servers.tradesage_server import TradeSageMCPServer, start_server as start_tradesage_server
 
 # Configure logging
@@ -76,6 +77,10 @@ class MCPIntegration:
         # Preferences Server
         if self._is_server_enabled("preferences"):
             self.servers["preferences"] = self._initialize_preferences_server()
+        
+        # Backtest Server
+        # if self._is_server_enabled("backtest"):
+            # self.servers["backtest"] = self._initialize_backtest_server()
         
         # TradeSage Server
         if self._is_server_enabled("tradeSage"):
@@ -286,6 +291,24 @@ class MCPIntegration:
         }
         
         return PreferencesServer(config)
+    
+    def _initialize_backtest_server(self):
+        """
+        Initialize backtest server
+        
+        Returns:
+            BacktestMCPServer: Backtest server
+        """
+        server_config = self.config.servers.get("backtest", {})
+        port = int(server_config.get("url", "http://localhost:8009").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return BacktestMCPServer()
     
     def _initialize_tradesage_server(self) -> TradeSageMCPServer:
         """

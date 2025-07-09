@@ -1,0 +1,364 @@
+/* Professional Design Improvements */
+
+/* Global animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(25, 118, 210, 0);
+  }
+}
+
+/* Global fade-in animation class */
+.animate-fade-in {
+  animation: fade-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Enhanced glassmorphism effect */
+.glass-effect {
+  backdrop-filter: blur(16px) saturate(180%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Professional card hover effects */
+.premium-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.premium-card:hover::before {
+  left: 100%;
+}
+
+/* Enhanced scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Professional button enhancements */
+.MuiButton-root {
+  text-transform: none !important;
+  letter-spacing: 0.01em;
+}
+
+/* Enhanced focus styles */
+.MuiButton-root:focus-visible,
+.MuiIconButton-root:focus-visible,
+.MuiListItemButton-root:focus-visible {
+  outline: 2px solid rgba(25, 118, 210, 0.5);
+  outline-offset: 2px;
+}
+
+/* Professional loading spinner */
+.professional-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Enhanced chip styling */
+.MuiChip-root {
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+}
+
+/* Professional avatar enhancements */
+.MuiAvatar-root {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Enhanced navigation transitions */
+.MuiListItemButton-root {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Professional card grid spacing */
+.MuiGrid-item {
+  animation: slide-in-right 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.MuiGrid-item:nth-child(1) { animation-delay: 0ms; }
+.MuiGrid-item:nth-child(2) { animation-delay: 100ms; }
+.MuiGrid-item:nth-child(3) { animation-delay: 200ms; }
+.MuiGrid-item:nth-child(4) { animation-delay: 300ms; }
+.MuiGrid-item:nth-child(5) { animation-delay: 400ms; }
+.MuiGrid-item:nth-child(6) { animation-delay: 500ms; }
+
+/* Enhanced typography hierarchy */
+.MuiTypography-h3 {
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.MuiTypography-h4 {
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.MuiTypography-h5 {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.MuiTypography-h6 {
+  font-weight: 700 !important;
+}
+
+/* Professional status indicators */
+.status-indicator {
+  position: relative;
+}
+
+.status-indicator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-positive::before {
+  background: #4caf50;
+  animation: pulse-glow 2s infinite;
+}
+
+.status-negative::before {
+  background: #f44336;
+}
+
+.status-neutral::before {
+  background: #ff9800;
+}
+
+/* Enhanced paper elevation alternatives */
+.paper-elevation-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.paper-elevation-medium {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+}
+
+.paper-elevation-strong {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Professional gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, rgba(25, 118, 210, 1) 0%, rgba(25, 118, 210, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced interactive elements */
+.interactive-hover {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+}
+
+.interactive-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* Professional border styles */
+.border-gradient {
+  border: 1px solid;
+  border-image: linear-gradient(135deg, rgba(25, 118, 210, 0.3), rgba(25, 118, 210, 0.1)) 1;
+}
+
+/* Enhanced form controls */
+.MuiTextField-root .MuiOutlinedInput-root {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.MuiTextField-root .MuiOutlinedInput-root:hover {
+  transform: translateY(-1px);
+}
+
+/* Professional skeleton loading */
+.skeleton-loading {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.06) 25%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.06) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  
+  .mobile-center {
+    text-align: center !important;
+  }
+  
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+/* Professional success/error states */
+.success-glow {
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.error-glow {
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
+}
+
+.warning-glow {
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+}
+
+/* Enhanced accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .MuiButton-outlined {
+    border-width: 2px !important;
+  }
+  
+  .MuiCard-root {
+    border: 2px solid !important;
+  }
+}
+
+/* Professional print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-full-width {
+    width: 100% !important;
+  }
+}

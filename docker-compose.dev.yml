@@ -10,6 +10,9 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=sqlite:////db_data/tradingjournalapp.db
+      - USE_FIRESTORE=true
+      - FIREBASE_PROJECT_ID=tradelogix-9f574
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/firebase-credentials.json
       - PYTHONUNBUFFERED=1
     command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:

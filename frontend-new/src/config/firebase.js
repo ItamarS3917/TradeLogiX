@@ -2,7 +2,7 @@
 // Purpose: Firebase initialization and configuration
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, setDoc } from "firebase/firestore";
+import { getFirestore, collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, setDoc, serverTimestamp, increment, runTransaction } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth"; // Import Firebase Auth
 
@@ -48,5 +48,8 @@ export {
   where,
   orderBy,
   limit,
-  setDoc
+  setDoc,
+  serverTimestamp,
+  increment,
+  runTransaction
 };

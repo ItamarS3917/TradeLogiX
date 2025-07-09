@@ -1,5 +1,5 @@
-# Base image with Python 3.9 (for compatibility with current codebase)
-FROM python:3.9-slim
+# Base image with Python 3.10 (required for MCP compatibility)
+FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app

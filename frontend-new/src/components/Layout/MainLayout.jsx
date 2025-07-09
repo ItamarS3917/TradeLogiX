@@ -41,7 +41,6 @@ import {
   Cloud as CloudIcon,
   IntegrationInstructions as IntegrationIcon,
   SyncAlt as SyncAltIcon,
-  Api as ApiIcon,
   Notifications as NotificationsIcon,
   KeyboardCommandKey as CommandIcon,
   TrendingUp as TrendingUpIcon,
@@ -51,7 +50,10 @@ import {
   AccountCircle as AccountIcon,
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
-  KeyboardArrowRight as ArrowRightIcon
+  KeyboardArrowRight as ArrowRightIcon,
+  Leaderboard as LeaderboardIcon,
+  TrendingUp as BacktestingIcon,
+  Group as GroupIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { OnboardingController } from '../Common/Onboarding';
@@ -71,7 +73,6 @@ const MainLayout = () => {
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
-  const [developerOpen, setDeveloperOpen] = useState(false);
   const [notificationMenu, setNotificationMenu] = useState(null);
   const [userMenu, setUserMenu] = useState(null);
   const { logout, user } = useAuth();
@@ -102,10 +103,6 @@ const MainLayout = () => {
     setIntegrationsOpen(!integrationsOpen);
   };
   
-  const toggleDeveloper = () => {
-    setDeveloperOpen(!developerOpen);
-  };
-  
   const handleNotificationMenuOpen = (event) => {
     setNotificationMenu(event.currentTarget);
   };
@@ -128,7 +125,10 @@ const MainLayout = () => {
     { text: 'Trade Journal', icon: <LibraryBooksIcon />, path: '/trades' },
     { text: 'Daily Planning', icon: <EventNoteIcon />, path: '/planning' },
     { text: 'Statistics', icon: <AssessmentIcon />, path: '/statistics' },
+    { text: 'Backtesting', icon: <BacktestingIcon />, path: '/backtesting' },
     { text: 'TradeSage AI', icon: <PsychologyIcon />, path: '/tradesage' },
+    { text: 'Social Feed', icon: <GroupIcon />, path: '/social' },
+    { text: 'Leaderboards', icon: <LeaderboardIcon />, path: '/leaderboards' },
   ];
   
   // Integration items
@@ -143,14 +143,7 @@ const MainLayout = () => {
     { text: 'Data Migration', icon: <SyncAltIcon />, path: '/migration' },
   ];
   
-  // Developer tools (only visible in development)
-  const developerItems = [
-    { text: 'API Bridge Test', icon: <ApiIcon />, path: '/api-bridge-test' },
-    { text: 'Firebase Test', icon: <CloudIcon />, path: '/firebase-test' },
-    { text: 'Trade Service Test', icon: <CloudIcon />, path: '/trade-service-test' },
-    { text: 'Firestore Direct Test', icon: <CloudIcon />, path: '/firestore-direct-test' },
-    { text: 'Analytics Example', icon: <CloudIcon />, path: '/analytics-example' },
-  ];
+
 
   // Sample notifications (replace with real data in production)
   const notifications = [
@@ -159,8 +152,7 @@ const MainLayout = () => {
     { id: 3, title: 'AI Insight', message: 'TradeSage found a pattern in your trades', time: 'Yesterday', read: true },
   ];
   
-  // Determine if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development';
+
   
   // Market Status chip (demo)
   const MarketStatusChip = () => {
@@ -168,18 +160,27 @@ const MainLayout = () => {
     const isMarketOpen = new Date().getHours() >= 9 && new Date().getHours() < 16;
     
     return (
-      <Chip 
-        icon={isMarketOpen ? <TrendingUpIcon /> : <TrendingDownIcon />}
-        label={isMarketOpen ? "Market Open" : "Market Closed"}
-        size="small"
-        color={isMarketOpen ? "success" : "default"}
-        sx={{ 
-          fontWeight: 600,
-          height: '28px',
-          '& .MuiChip-label': { px: 1.5 },
-          '& .MuiChip-icon': { fontSize: '16px' }
-        }}
-      />
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        px: 2,
+        py: 1,
+        borderRadius: 3,
+        background: isMarketOpen 
+          ? `linear-gradient(135deg, ${alpha(muiTheme.palette.success.main, 0.1)} 0%, ${alpha(muiTheme.palette.success.main, 0.05)} 100%)`
+          : `linear-gradient(135deg, ${alpha(muiTheme.palette.error.main, 0.1)} 0%, ${alpha(muiTheme.palette.error.main, 0.05)} 100%)`,
+        border: `1px solid ${alpha(isMarketOpen ? muiTheme.palette.success.main : muiTheme.palette.error.main, 0.2)}`,
+        backdropFilter: 'blur(8px)'
+      }}>
+        {isMarketOpen ? <TrendingUpIcon sx={{ mr: 1, fontSize: '1.1rem' }} /> : <TrendingDownIcon sx={{ mr: 1, fontSize: '1.1rem' }} />}
+        <Typography sx={{
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          color: isMarketOpen ? muiTheme.palette.success.main : muiTheme.palette.error.main
+        }}>
+          {isMarketOpen ? "Market Open" : "Market Closed"}
+        </Typography>
+      </Box>
     );
   };
   
@@ -189,38 +190,45 @@ const MainLayout = () => {
       {/* App Logo & Title */}
       <Box 
         sx={{ 
-          p: 2.5, 
+          p: 3, 
           display: 'flex', 
           alignItems: 'center',
-          borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`
+          borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.06)}`,
+          background: `linear-gradient(135deg, ${alpha(muiTheme.palette.primary.main, 0.02)} 0%, ${alpha(muiTheme.palette.background.paper, 0.8)} 100%)`,
+          backdropFilter: 'blur(8px)'
         }}
       >
         <Box 
           sx={{ 
-            width: 42, 
-            height: 42, 
-            borderRadius: 2,
+            width: 48, 
+            height: 48, 
+            borderRadius: 3,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             background: `linear-gradient(135deg, ${muiTheme.palette.primary.main} 0%, ${muiTheme.palette.primary.dark} 100%)`,
             color: '#fff',
-            mr: 1.5,
-            fontWeight: 800,
-            fontSize: '20px',
-            boxShadow: `0 4px 12px ${alpha(muiTheme.palette.primary.main, 0.3)}`
+            mr: 2,
+            fontWeight: 900,
+            fontSize: '22px',
+            letterSpacing: '-0.02em',
+            boxShadow: `0 8px 20px ${alpha(muiTheme.palette.primary.main, 0.4)}`,
+            border: `2px solid ${alpha('#fff', 0.2)}`
           }}
         >
           MR
         </Box>
         <Box>
           <Typography 
-            variant="h6" 
+            variant="h5" 
             sx={{ 
-              fontWeight: 800, 
-              letterSpacing: '-0.01em',
-              lineHeight: 1.2,
-              fontSize: '1.25rem'
+              fontWeight: 900, 
+              letterSpacing: '-0.02em',
+              lineHeight: 1.1,
+              fontSize: '1.4rem',
+              background: `linear-gradient(135deg, ${muiTheme.palette.text.primary} 0%, ${muiTheme.palette.primary.main} 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
             }}
           >
             TradeMR
@@ -233,49 +241,55 @@ const MainLayout = () => {
       
       {/* Date & Search */}
       <Box sx={{ 
-        p: 2.5, 
-        pb: 1.5, 
-        borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`
+        p: 3, 
+        pb: 2, 
+        borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.06)}`,
+        background: `linear-gradient(135deg, ${alpha(muiTheme.palette.background.paper, 0.6)} 0%, ${alpha(muiTheme.palette.background.default, 0.2)} 100%)`
       }}>
         <Typography variant="caption" sx={{ 
-          color: alpha(muiTheme.palette.text.primary, 0.6),
+          color: alpha(muiTheme.palette.text.primary, 0.7),
           textTransform: 'uppercase',
-          fontWeight: 600,
-          letterSpacing: '0.05em',
-          fontSize: '0.7rem'
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          fontSize: '0.75rem'
         }}>
           {format(new Date(), 'EEEE, MMMM d, yyyy')}
         </Typography>
         
         <Box sx={{ 
-          mt: 1.5, 
+          mt: 2, 
           display: 'flex', 
           alignItems: 'center',
-          p: 1,
-          borderRadius: 2,
-          bgcolor: alpha(muiTheme.palette.text.primary, 0.04),
-          border: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`,
+          p: 1.5,
+          borderRadius: 3,
+          bgcolor: alpha(muiTheme.palette.text.primary, 0.03),
+          border: `1px solid ${alpha(muiTheme.palette.text.primary, 0.06)}`,
           cursor: 'pointer',
+          backdropFilter: 'blur(8px)',
+          transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
           '&:hover': {
             bgcolor: alpha(muiTheme.palette.text.primary, 0.06),
+            transform: 'translateY(-1px)',
+            boxShadow: `0 8px 16px ${alpha(muiTheme.palette.text.primary, 0.08)}`
           }
         }}>
-          <SearchIcon sx={{ color: alpha(muiTheme.palette.text.primary, 0.4), mr: 1, fontSize: '1.2rem' }} />
+          <SearchIcon sx={{ color: alpha(muiTheme.palette.text.primary, 0.5), mr: 1.5, fontSize: '1.3rem' }} />
           <Typography sx={{ 
-            color: alpha(muiTheme.palette.text.primary, 0.5),
-            fontWeight: 500,
-            fontSize: '0.875rem'
+            color: alpha(muiTheme.palette.text.primary, 0.6),
+            fontWeight: 600,
+            fontSize: '0.9rem'
           }}>
             Search...
           </Typography>
           <Box sx={{ 
             ml: 'auto', 
-            bgcolor: alpha(muiTheme.palette.text.primary, 0.08),
-            borderRadius: 1,
-            px: 0.7,
-            fontSize: '0.65rem',
-            fontWeight: 600,
-            color: alpha(muiTheme.palette.text.primary, 0.7),
+            bgcolor: alpha(muiTheme.palette.text.primary, 0.1),
+            borderRadius: 1.5,
+            px: 1,
+            py: 0.3,
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            color: alpha(muiTheme.palette.text.primary, 0.8),
           }}>
             ⌘K
           </Box>
@@ -286,29 +300,42 @@ const MainLayout = () => {
       <Box sx={{ flex: 1, overflowY: 'auto', pt: 1.5 }}>
         <Typography variant="caption" sx={{ 
           px: 3, 
-          py: 1.5, 
+          py: 2, 
           display: 'block',
-          color: alpha(muiTheme.palette.text.primary, 0.6),
+          color: alpha(muiTheme.palette.text.primary, 0.7),
           textTransform: 'uppercase',
-          fontWeight: 600,
-          letterSpacing: '0.05em',
-          fontSize: '0.7rem'
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          fontSize: '0.75rem'
         }}>
           Main Navigation
         </Typography>
         
         <List component="nav" sx={{ px: 1.5 }}>
           {navItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+            <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
               <ListItemButton 
                 onClick={() => navigateTo(item.path)}
                 selected={location.pathname === item.path}
                 sx={{ 
-                  py: 1.2,
-                  px: 1.5,
-                  borderRadius: 2,
+                  py: 1.5,
+                  px: 2,
+                  borderRadius: 3,
                   position: 'relative',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  background: location.pathname === item.path 
+                    ? `linear-gradient(135deg, ${alpha(muiTheme.palette.primary.main, 0.08)} 0%, ${alpha(muiTheme.palette.primary.main, 0.12)} 100%)`
+                    : 'transparent',
+                  border: location.pathname === item.path 
+                    ? `1px solid ${alpha(muiTheme.palette.primary.main, 0.2)}`
+                    : '1px solid transparent',
+                  transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                  '&:hover': {
+                    background: location.pathname === item.path 
+                      ? `linear-gradient(135deg, ${alpha(muiTheme.palette.primary.main, 0.12)} 0%, ${alpha(muiTheme.palette.primary.main, 0.16)} 100%)`
+                      : alpha(muiTheme.palette.text.primary, 0.04),
+                    transform: 'translateX(4px)'
+                  }
                 }}
               >
                 {location.pathname === item.path && (
@@ -318,33 +345,39 @@ const MainLayout = () => {
                     top: '50%',
                     transform: 'translateY(-50%)',
                     width: 4,
-                    height: '50%',
+                    height: '60%',
                     bgcolor: muiTheme.palette.primary.main,
-                    borderRadius: '0 4px 4px 0'
+                    borderRadius: '0 4px 4px 0',
+                    boxShadow: `0 4px 8px ${alpha(muiTheme.palette.primary.main, 0.3)}`
                   }} />
                 )}
                 <ListItemIcon sx={{ 
-                  minWidth: 40, 
+                  minWidth: 44, 
                   color: location.pathname === item.path 
                     ? muiTheme.palette.primary.main 
-                    : alpha(muiTheme.palette.text.primary, 0.7)
+                    : alpha(muiTheme.palette.text.primary, 0.7),
+                  '& svg': {
+                    fontSize: '1.3rem'
+                  }
                 }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText 
                   primary={item.text} 
                   primaryTypographyProps={{ 
-                    fontWeight: location.pathname === item.path ? 700 : 500,
+                    fontWeight: location.pathname === item.path ? 700 : 600,
                     fontSize: '0.95rem',
+                    letterSpacing: '0.01em'
                   }} 
                 />
                 {location.pathname === item.path && (
                   <Box sx={{ 
                     ml: 'auto', 
-                    width: 6, 
-                    height: 6, 
+                    width: 8, 
+                    height: 8, 
                     borderRadius: '50%',
-                    bgcolor: muiTheme.palette.primary.main
+                    bgcolor: muiTheme.palette.primary.main,
+                    boxShadow: `0 2px 6px ${alpha(muiTheme.palette.primary.main, 0.4)}`
                   }} />
                 )}
               </ListItemButton>
@@ -470,91 +503,30 @@ const MainLayout = () => {
               </ListItemButton>
             </ListItem>
           ))}
-          
-          {/* Developer tools (only in development) */}
-          {isDevelopment && (
-            <>
-              <Divider sx={{ my: 2, mx: 1 }} />
-              
-              <Typography variant="caption" sx={{ 
-                px: 1.5, 
-                py: 1, 
-                display: 'block',
-                color: alpha(muiTheme.palette.text.primary, 0.6),
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                fontSize: '0.7rem'
-              }}>
-                Developer
-              </Typography>
-              
-              {developerItems.map((item) => (
-                <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-                  <ListItemButton 
-                    onClick={() => navigateTo(item.path)}
-                    selected={location.pathname === item.path}
-                    sx={{ 
-                      py: 1,
-                      px: 1.5,
-                      borderRadius: 2,
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {location.pathname === item.path && (
-                      <Box sx={{ 
-                        position: 'absolute',
-                        left: 0,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 4,
-                        height: '50%',
-                        bgcolor: muiTheme.palette.primary.main,
-                        borderRadius: '0 4px 4px 0'
-                      }} />
-                    )}
-                    <ListItemIcon sx={{ 
-                      minWidth: 40, 
-                      color: location.pathname === item.path 
-                        ? muiTheme.palette.primary.main 
-                        : alpha(muiTheme.palette.text.primary, 0.7),
-                      fontSize: '1.2rem'
-                    }}>
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={item.text} 
-                      primaryTypographyProps={{ 
-                        fontWeight: location.pathname === item.path ? 700 : 500,
-                        fontSize: '0.9rem',
-                      }} 
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </>
-          )}
+
         </List>
       </Box>
       
       {/* User section */}
       <Box 
         sx={{ 
-          p: 2, 
-          borderTop: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`,
-          backgroundColor: alpha(muiTheme.palette.background.paper, 0.6),
-          backdropFilter: 'blur(8px)'
+          p: 3, 
+          borderTop: `1px solid ${alpha(muiTheme.palette.text.primary, 0.06)}`,
+          background: `linear-gradient(135deg, ${alpha(muiTheme.palette.primary.main, 0.02)} 0%, ${alpha(muiTheme.palette.background.paper, 0.8)} 100%)`,
+          backdropFilter: 'blur(12px)'
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Avatar 
             sx={{ 
-              width: 44, 
-              height: 44, 
-              mr: 1.5,
+              width: 48, 
+              height: 48, 
+              mr: 2,
               bgcolor: muiTheme.palette.primary.main,
-              boxShadow: `0 4px 14px ${alpha(muiTheme.palette.primary.main, 0.3)}`
+              boxShadow: `0 8px 20px ${alpha(muiTheme.palette.primary.main, 0.4)}`,
+              border: `2px solid ${alpha('#fff', 0.2)}`,
+              fontWeight: 700,
+              fontSize: '1.2rem'
             }}
           >
             {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
@@ -563,10 +535,11 @@ const MainLayout = () => {
             <Typography 
               variant="subtitle1" 
               sx={{ 
-                fontWeight: 600,
+                fontWeight: 700,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                textOverflow: 'ellipsis',
+                fontSize: '1rem'
               }}
             >
               {user?.name || 'User'}
@@ -575,10 +548,12 @@ const MainLayout = () => {
               variant="body2" 
               color="text.secondary"
               sx={{ 
-                fontSize: '0.75rem',
+                fontSize: '0.8rem',
+                fontWeight: 500,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                textOverflow: 'ellipsis',
+                opacity: 0.8
               }}
             >
               {user?.email || 'user@example.com'}
@@ -587,7 +562,13 @@ const MainLayout = () => {
           <IconButton 
             size="small" 
             onClick={handleUserMenuOpen}
-            sx={{ ml: 1 }}
+            sx={{ 
+              ml: 1,
+              backgroundColor: alpha(muiTheme.palette.text.primary, 0.05),
+              '&:hover': {
+                backgroundColor: alpha(muiTheme.palette.text.primary, 0.1)
+              }
+            }}
           >
             <MoreVertIcon fontSize="small" />
           </IconButton>
@@ -627,18 +608,22 @@ const MainLayout = () => {
           </Menu>
         </Box>
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
           <Tooltip title="Toggle light/dark mode">
             <IconButton 
-              size="small" 
+              size="medium" 
               onClick={toggleMode}
               className="theme-toggle-icon"
               sx={{ 
-                borderRadius: 1.5,
-                backgroundColor: alpha(muiTheme.palette.text.primary, 0.04),
+                borderRadius: 2,
+                backgroundColor: alpha(muiTheme.palette.text.primary, 0.06),
+                border: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`,
                 '&:hover': {
-                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.08)
-                }
+                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.12),
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 8px ${alpha(muiTheme.palette.text.primary, 0.1)}`
+                },
+                transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
               }}
             >
               {muiTheme.palette.mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
@@ -647,14 +632,18 @@ const MainLayout = () => {
           
           <Tooltip title="Keyboard shortcuts">
             <IconButton 
-              size="small" 
+              size="medium" 
               onClick={() => showShortcutsModal(true)}
               sx={{ 
-                borderRadius: 1.5,
-                backgroundColor: alpha(muiTheme.palette.text.primary, 0.04),
+                borderRadius: 2,
+                backgroundColor: alpha(muiTheme.palette.text.primary, 0.06),
+                border: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`,
                 '&:hover': {
-                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.08)
-                }
+                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.12),
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 8px ${alpha(muiTheme.palette.text.primary, 0.1)}`
+                },
+                transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
               }}
             >
               <CommandIcon fontSize="small" />
@@ -663,14 +652,18 @@ const MainLayout = () => {
           
           <Tooltip title="Notifications">
             <IconButton 
-              size="small" 
+              size="medium" 
               onClick={handleNotificationMenuOpen}
               sx={{ 
-                borderRadius: 1.5,
-                backgroundColor: alpha(muiTheme.palette.text.primary, 0.04),
+                borderRadius: 2,
+                backgroundColor: alpha(muiTheme.palette.text.primary, 0.06),
+                border: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`,
                 '&:hover': {
-                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.08)
-                }
+                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.12),
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 8px ${alpha(muiTheme.palette.text.primary, 0.1)}`
+                },
+                transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
               }}
             >
               <Badge 
@@ -742,14 +735,19 @@ const MainLayout = () => {
           
           <Tooltip title="Logout">
             <IconButton 
-              size="small" 
+              size="medium" 
               onClick={handleLogout}
               sx={{ 
-                borderRadius: 1.5,
-                backgroundColor: alpha(muiTheme.palette.text.primary, 0.04),
+                borderRadius: 2,
+                backgroundColor: alpha(muiTheme.palette.error.main, 0.08),
+                border: `1px solid ${alpha(muiTheme.palette.error.main, 0.12)}`,
+                color: muiTheme.palette.error.main,
                 '&:hover': {
-                  backgroundColor: alpha(muiTheme.palette.text.primary, 0.08)
-                }
+                  backgroundColor: alpha(muiTheme.palette.error.main, 0.16),
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 8px ${alpha(muiTheme.palette.error.main, 0.2)}`
+                },
+                transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
               }}
             >
               <LogoutIcon fontSize="small" />
@@ -782,14 +780,16 @@ const MainLayout = () => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          backgroundColor: alpha(muiTheme.palette.background.paper, 0.85),
-          backdropFilter: 'blur(12px)',
-          borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.08)}`
+          backgroundColor: alpha(muiTheme.palette.background.paper, 0.9),
+          backdropFilter: 'blur(20px)',
+          borderBottom: `1px solid ${alpha(muiTheme.palette.text.primary, 0.06)}`,
+          boxShadow: `0 4px 20px ${alpha(muiTheme.palette.text.primary, 0.03)}`
         }}
       >
         <Toolbar sx={{ 
           justifyContent: 'space-between',
-          height: 70
+          height: 72,
+          px: { xs: 2, sm: 3 }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton
@@ -804,13 +804,15 @@ const MainLayout = () => {
             
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Typography 
-                variant="h6" 
+                variant="h5" 
                 sx={{ 
-                  fontWeight: 700,
+                  fontWeight: 800,
                   display: { xs: 'none', sm: 'block' },
-                  background: `linear-gradient(90deg, ${muiTheme.palette.text.primary} 0%, ${alpha(muiTheme.palette.text.primary, 0.7)} 100%)`,
+                  fontSize: '1.5rem',
+                  background: `linear-gradient(135deg, ${muiTheme.palette.text.primary} 0%, ${alpha(muiTheme.palette.primary.main, 0.8)} 100%)`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
+                  letterSpacing: '-0.01em'
                 }}
               >
                 {getCurrentPageTitle(location.pathname)}
@@ -825,14 +827,21 @@ const MainLayout = () => {
             <Button 
               variant="contained" 
               color="primary"
-              size="small"
+              size="medium"
               sx={{ 
-                height: 36,
-                px: 2,
-                borderRadius: 2,
-                fontWeight: 600,
-                boxShadow: `0 4px 14px ${alpha(muiTheme.palette.primary.main, 0.3)}`,
-                display: { xs: 'none', md: 'flex' }
+                height: 40,
+                px: 3,
+                borderRadius: 3,
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                background: `linear-gradient(135deg, ${muiTheme.palette.primary.main} 0%, ${muiTheme.palette.primary.dark} 100%)`,
+                boxShadow: `0 6px 16px ${alpha(muiTheme.palette.primary.main, 0.3)}`,
+                display: { xs: 'none', md: 'flex' },
+                '&:hover': {
+                  boxShadow: `0 8px 20px ${alpha(muiTheme.palette.primary.main, 0.4)}`,
+                  transform: 'translateY(-2px)'
+                },
+                transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
               }}
               onClick={() => navigateTo('/trades')}
             >
@@ -902,13 +911,24 @@ const MainLayout = () => {
         sx={{ 
           flexGrow: 1, 
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          marginTop: '70px', // Height of the AppBar
+          marginTop: '72px', // Height of the AppBar
           maxWidth: '100%', // Ensure content doesn't overflow on mobile
           overflowX: 'hidden', // Prevent horizontal scrolling
-          minHeight: 'calc(100vh - 70px)',
-          backgroundColor: muiTheme.palette.background.default
+          minHeight: 'calc(100vh - 72px)',
+          backgroundColor: muiTheme.palette.background.default,
+          position: 'relative'
         }}
       >
+        {/* Background gradient overlay */}
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '200px',
+          background: `linear-gradient(180deg, ${alpha(muiTheme.palette.primary.main, 0.01)} 0%, transparent 100%)`,
+          pointerEvents: 'none'
+        }} />
         {/* Data Source Warning Banner */}
         <DataSourceWarning />
         
@@ -936,7 +956,11 @@ const getCurrentPageTitle = (pathname) => {
     '/trades': 'Trade Journal',
     '/planning': 'Daily Planning',
     '/statistics': 'Trading Statistics',
+    '/backtesting': 'Strategy Backtesting',
     '/tradesage': 'TradeSage AI Assistant',
+    '/leaderboards': 'Trading Leaderboards',
+    '/social': 'Social Trading Feed',
+    '/analytics': 'Professional Analytics',
     '/cloud-sync': 'Cloud Synchronization',
     '/tradingview': 'TradingView Integration',
     '/settings': 'Settings',

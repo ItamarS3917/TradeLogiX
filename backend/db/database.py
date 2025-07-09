@@ -62,6 +62,7 @@ def initialize_db() -> None:
         from ..models.journal import Journal
         from ..models.statistic import Statistic
         from ..models.alert import Alert
+        from ..models.backtest import BacktestStrategy, Backtest, BacktestTrade, BacktestComparison
         
         # Create tables
         logger.info("Creating database tables...")

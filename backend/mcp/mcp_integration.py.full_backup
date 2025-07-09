@@ -1,0 +1,376 @@
+# File: backend/mcp/mcp_integration.py
+# Purpose: Central module for MCP system integration
+
+import logging
+import asyncio
+import threading
+from typing import Dict, List, Any, Optional
+from fastapi import FastAPI, Depends
+
+from .mcp_config import MCPConfig, get_mcp_config
+from .servers.statistics_server import StatisticsMCPServer
+from .servers.ai_server import AIServer, get_ai_client 
+from .servers.market_data_server import MarketDataServer
+from .servers.trade_analysis_server import TradeAnalysisServer
+from .servers.sentiment_analysis import SentimentAnalysisServer
+from .servers.alert_server import AlertServer
+from .servers.preferences_server import PreferencesServer
+# from .servers.backtest_server import BacktestMCPServer
+from .servers.tradesage_server import TradeSageMCPServer, start_server as start_tradesage_server
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class MCPIntegration:
+    """
+    Central manager for MCP integration
+    Handles initialization, configuration, and coordination of MCP servers
+    """
+    
+    def __init__(self, config: Optional[MCPConfig] = None):
+        """
+        Initialize MCP integration
+        
+        Args:
+            config (Optional[MCPConfig], optional): MCP configuration. Defaults to None.
+        """
+        self.config = config or get_mcp_config()
+        self.servers = {}
+        self.server_threads = {}
+        self.initialized = False
+        
+        logger.info("Initialized MCP Integration Manager")
+    
+    def initialize(self):
+        """
+        Initialize all MCP servers based on configuration
+        """
+        if self.initialized:
+            logger.warning("MCP Integration already initialized")
+            return
+        
+        # Statistics Server
+        if self._is_server_enabled("statistics"):
+            self.servers["statistics"] = self._initialize_statistics_server()
+        
+        # Market Data Server
+        if self._is_server_enabled("market_data"):
+            self.servers["market_data"] = self._initialize_market_data_server()
+        
+        # Trade Analysis Server
+        if self._is_server_enabled("trade_analysis"):
+            self.servers["trade_analysis"] = self._initialize_trade_analysis_server()
+        
+        # AI Server
+        if self._is_server_enabled("ai"):
+            self.servers["ai"] = self._initialize_ai_server()
+        
+        # Sentiment Analysis Server
+        if self._is_server_enabled("sentiment_analysis"):
+            self.servers["sentiment_analysis"] = self._initialize_sentiment_analysis_server()
+        
+        # Alerts Server
+        if self._is_server_enabled("alerts"):
+            self.servers["alerts"] = self._initialize_alerts_server()
+            
+        # Preferences Server
+        if self._is_server_enabled("preferences"):
+            self.servers["preferences"] = self._initialize_preferences_server()
+        
+        # Backtest Server
+        if self._is_server_enabled("backtest"):
+            self.servers["backtest"] = self._initialize_backtest_server()
+        
+        # TradeSage Server
+        if self._is_server_enabled("tradeSage"):
+            self.servers["tradeSage"] = self._initialize_tradesage_server()
+        
+        # Mark as initialized
+        self.initialized = True
+        
+        logger.info(f"Initialized {len(self.servers)} MCP servers")
+    
+    def start_servers(self, blocking: bool = False):
+        """
+        Start all MCP servers
+        
+        Args:
+            blocking (bool, optional): Whether to block until servers exit. Defaults to False.
+        """
+        if not self.initialized:
+            self.initialize()
+        
+        # Start servers
+        for name, server in self.servers.items():
+            if blocking:
+                # Start server directly in current thread (for testing)
+                logger.info(f"Starting MCP server '{name}' in blocking mode")
+                server.start()
+            else:
+                # Start server in a separate thread
+                logger.info(f"Starting MCP server '{name}' in background thread")
+                thread = threading.Thread(
+                    target=lambda svr=server: svr.start(),
+                    daemon=True
+                )
+                thread.start()
+                self.server_threads[name] = thread
+        
+        logger.info(f"Started {len(self.servers)} MCP servers")
+    
+    def stop_servers(self):
+        """
+        Stop all MCP servers
+        """
+        for name, server in self.servers.items():
+            logger.info(f"Stopping MCP server '{name}'")
+            server.stop()
+        
+        logger.info(f"Stopped {len(self.servers)} MCP servers")
+    
+    def register_with_app(self, app: FastAPI):
+        """
+        Register MCP services with FastAPI app
+        
+        Args:
+            app (FastAPI): FastAPI application
+        """
+        # Register MCP routes
+        @app.get("/api/mcp/status")
+        async def mcp_status():
+            return {
+                "status": "active" if self.initialized else "inactive",
+                "servers": {name: {"status": "running"} for name in self.servers}
+            }
+        
+        # Register MCP configuration endpoint
+        @app.get("/api/mcp/config")
+        async def mcp_config():
+            return self.config.to_dict()
+        
+        logger.info("Registered MCP routes with FastAPI app")
+    
+    def _is_server_enabled(self, server_name: str) -> bool:
+        """
+        Check if a server is enabled in the configuration
+        
+        Args:
+            server_name (str): Server name
+            
+        Returns:
+            bool: Whether the server is enabled
+        """
+        server_config = self.config.servers.get(server_name, {})
+        return server_config.get("enabled", False)
+    
+    def _initialize_statistics_server(self) -> StatisticsMCPServer:
+        """
+        Initialize statistics server
+        
+        Returns:
+            StatisticsMCPServer: Statistics server
+        """
+        server_config = self.config.servers.get("statistics", {})
+        port = int(server_config.get("url", "http://localhost:8001").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return StatisticsMCPServer()
+    
+    def _initialize_market_data_server(self) -> MarketDataServer:
+        """
+        Initialize market data server
+        
+        Returns:
+            MarketDataServer: Market data server
+        """
+        server_config = self.config.servers.get("market_data", {})
+        port = int(server_config.get("url", "http://localhost:8002").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return MarketDataServer(config)
+    
+    def _initialize_trade_analysis_server(self) -> TradeAnalysisServer:
+        """
+        Initialize trade analysis server
+        
+        Returns:
+            TradeAnalysisServer: Trade analysis server
+        """
+        server_config = self.config.servers.get("trade_analysis", {})
+        port = int(server_config.get("url", "http://localhost:8003").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return TradeAnalysisServer(config)
+    
+    def _initialize_ai_server(self) -> AIServer:
+        """
+        Initialize AI server
+        
+        Returns:
+            AIServer: AI server
+        """
+        server_config = self.config.servers.get("ai", {})
+        port = int(server_config.get("url", "http://localhost:8004").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None,
+            "model": server_config.get("model", "claude-3-opus-20240229")
+        }
+        
+        return AIServer(config)
+    
+    def _initialize_sentiment_analysis_server(self) -> SentimentAnalysisServer:
+        """
+        Initialize sentiment analysis server
+        
+        Returns:
+            SentimentAnalysisServer: Sentiment analysis server
+        """
+        server_config = self.config.servers.get("sentiment_analysis", {})
+        port = int(server_config.get("url", "http://localhost:8006").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return SentimentAnalysisServer(config)
+    
+    def _initialize_alerts_server(self) -> AlertServer:
+        """
+        Initialize alerts server
+        
+        Returns:
+            AlertServer: Alerts server
+        """
+        server_config = self.config.servers.get("alerts", {})
+        port = int(server_config.get("url", "http://localhost:8005").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None,
+            "notification": self.config.services.get("notification", {})
+        }
+        
+        return AlertServer(config)
+        
+    def _initialize_preferences_server(self) -> PreferencesServer:
+        """
+        Initialize preferences server
+        
+        Returns:
+            PreferencesServer: Preferences server
+        """
+        server_config = self.config.servers.get("preferences", {})
+        port = int(server_config.get("url", "http://localhost:8008").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return PreferencesServer(config)
+    
+    def _initialize_backtest_server(self) -> BacktestMCPServer:
+        """
+        Initialize backtest server
+        
+        Returns:
+            BacktestMCPServer: Backtest server
+        """
+        server_config = self.config.servers.get("backtest", {})
+        port = int(server_config.get("url", "http://localhost:8009").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None
+        }
+        
+        return BacktestMCPServer()
+    
+    def _initialize_tradesage_server(self) -> TradeSageMCPServer:
+        """
+        Initialize TradeSage server
+        
+        Returns:
+            TradeSageMCPServer: TradeSage server
+        """
+        server_config = self.config.servers.get("tradeSage", {})
+        port = int(server_config.get("url", "http://localhost:8007").split(":")[-1].split("/")[0])
+        
+        config = {
+            "host": "localhost",
+            "port": port,
+            "api_key": self.config.security.get("api_key") if self.config.security.get("api_key_required") else None,
+            "name": "tradeSage",
+            "version": server_config.get("version", "1.0.0")
+        }
+        
+        return TradeSageMCPServer(config)
+
+# Singleton instance
+_mcp_integration = None
+
+def get_mcp_integration() -> MCPIntegration:
+    """
+    Get MCP integration singleton
+    
+    Returns:
+        MCPIntegration: MCP integration
+    """
+    global _mcp_integration
+    if _mcp_integration is None:
+        _mcp_integration = MCPIntegration()
+    
+    return _mcp_integration
+
+# Function to initialize MCP
+def initialize_mcp(app: Optional[FastAPI] = None) -> MCPIntegration:
+    """
+    Initialize MCP integration
+    
+    Args:
+        app (Optional[FastAPI], optional): FastAPI application. Defaults to None.
+        
+    Returns:
+        MCPIntegration: MCP integration
+    """
+    integration = get_mcp_integration()
+    integration.initialize()
+    
+    if app:
+        integration.register_with_app(app)
+    
+    return integration
+
+# For use as dependency
+def get_mcp():
+    """
+    FastAPI dependency for MCP integration
+    
+    Returns:
+        MCPIntegration: MCP integration
+    """
+    return get_mcp_integration()

@@ -1,0 +1,18 @@
+import React from 'react';
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import DebugApp from './components/Debug/DebugApp';
+
+const theme = createTheme();
+
+function App() {
+  console.log('🎯 Trading Journal App Loading...');
+  
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <DebugApp />
+    </ThemeProvider>
+  );
+}
+
+export default App;

@@ -33,5 +33,9 @@ class User(Base):
     preferences_obj = relationship("Preferences", back_populates="user", uselist=False)
     chart_templates = relationship("ChartTemplate", back_populates="user")
     
+    # Backtesting relationships
+    backtest_strategies = relationship("BacktestStrategy", back_populates="user")
+    backtests = relationship("Backtest", back_populates="user")
+    
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username})>"

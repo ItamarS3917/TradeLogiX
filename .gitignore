@@ -65,8 +65,17 @@ frontend/dist/
 frontend/node_modules/
 
 # Backup files
+backups/
 *-backup/
 *_backup/
+*.bak
+
+# Temporary directories
+clean-repo/
+tmp/
+
+# Scripts
+*.sh
 
 # Firebase credentials
 firebase-credentials.json

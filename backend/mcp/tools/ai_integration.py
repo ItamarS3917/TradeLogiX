@@ -879,7 +879,7 @@ Provide your analysis in the following format:
                     
                     for word in words:
                         # Clean up punctuation
-                        word = word.strip(",.;:()\"'")
+                        word = word.strip(",.;:()")
                         
                         # Common emotion words
                         common_emotions = [

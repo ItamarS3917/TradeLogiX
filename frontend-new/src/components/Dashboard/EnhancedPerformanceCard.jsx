@@ -12,10 +12,11 @@ import { InfoOutlined as InfoIcon } from '@mui/icons-material';
 import { ResponsiveContainer, LineChart, Line } from 'recharts';
 
 /**
- * Enhanced Performance Card Component
+ * Enhanced Performance Card Component - REAL DATA ONLY
  * 
  * Displays a performance metric with:
- * - Sparkline mini-chart showing trend
+ * - Real data values only
+ * - Sparkline chart only when real data is available
  * - Interactive tooltip with detailed information
  * - Visual indicators for positive/negative values
  * - Hover effects for better user interaction
@@ -25,7 +26,7 @@ import { ResponsiveContainer, LineChart, Line } from 'recharts';
  * @param {string|number} props.value Main metric value
  * @param {number} props.trend Percentage change (positive or negative)
  * @param {string} props.previousValue Previous value for comparison
- * @param {Array} props.sparklineData Data points for sparkline chart
+ * @param {Array} props.sparklineData Data points for sparkline chart (null = no chart)
  * @param {string} props.tooltipText Detailed explanation for tooltip
  * @param {Function} props.onClick Click handler for the card
  * @param {React.ReactNode} props.icon Optional icon component
@@ -49,32 +50,34 @@ const EnhancedPerformanceCard = ({
     ? (parseFloat(value) >= 0 ? theme.palette.success.main : theme.palette.error.main)
     : theme.palette[color].main;
   
-  // Generate sparkline data if not provided
-  const chartData = sparklineData || generateMockSparklineData(trend);
+  // Only show sparkline if real data is provided
+  const shouldShowSparkline = sparklineData && Array.isArray(sparklineData) && sparklineData.length > 0;
   
   return (
     <Card 
       sx={{ 
-        borderRadius: 2, 
-        p: 2, 
+        borderRadius: 4, 
+        p: 3, 
         cursor: 'pointer',
-        transition: 'transform 0.2s, box-shadow 0.2s',
+        transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.1)}`,
+          transform: 'translateY(-2px) scale(1.02)',
+          boxShadow: `0 25px 50px ${alpha(valueColor, 0.15)}`,
         },
-        background: `linear-gradient(135deg, ${alpha(valueColor, 0.02)} 0%, ${alpha(valueColor, 0.07)} 100%)`,
-        border: `1px solid ${alpha(valueColor, 0.1)}`,
+        background: 'transparent',
+        border: 'none',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'visible'
       }}
       onClick={onClick || (() => {})}
       elevation={0}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500 }}>
+          <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.9rem', letterSpacing: '0.02em' }}>
             {title}
           </Typography>
           <Tooltip 
@@ -85,19 +88,20 @@ const EnhancedPerformanceCard = ({
             }
             arrow
           >
-            <InfoIcon sx={{ ml: 0.5, fontSize: 16, color: 'text.secondary' }} />
+            <InfoIcon sx={{ ml: 1, fontSize: 18, color: 'text.secondary', opacity: 0.7 }} />
           </Tooltip>
         </Box>
         {icon && (
           <Box sx={{ 
             color: valueColor,
-            backgroundColor: alpha(valueColor, 0.1),
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
+            backgroundColor: alpha(valueColor, 0.15),
+            width: 40,
+            height: 40,
+            borderRadius: 3,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: `0 8px 16px ${alpha(valueColor, 0.2)}`
           }}>
             {icon}
           </Box>
@@ -107,80 +111,92 @@ const EnhancedPerformanceCard = ({
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: 'auto' }}>
         <Box>
           <Typography 
-            variant="h4" 
+            variant="h3" 
             sx={{ 
-              fontWeight: 700, 
+              fontWeight: 900, 
               color: valueColor,
-              lineHeight: 1.2
+              lineHeight: 1.1,
+              fontSize: { xs: '1.8rem', sm: '2.2rem' },
+              letterSpacing: '-0.02em',
+              background: `linear-gradient(135deg, ${valueColor} 0%, ${alpha(valueColor, 0.8)} 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
             }}
           >
             {value}
           </Typography>
           
-          {trend !== null && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+          {trend !== null && trend !== undefined && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
               <Chip 
                 label={`${trend > 0 ? '+' : ''}${trend}%`}
-                size="small"
+                size="medium"
                 color={trend >= 0 ? "success" : "error"}
                 sx={{ 
-                  height: 20, 
-                  fontSize: '0.7rem', 
-                  fontWeight: 600,
+                  height: 28, 
+                  fontSize: '0.8rem', 
+                  fontWeight: 700,
+                  borderRadius: 2,
                   '& .MuiChip-label': {
-                    px: 1
+                    px: 1.5
                   }
                 }}
               />
               
               {previousValue && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 1.5, fontWeight: 500 }}>
                   vs. {previousValue}
                 </Typography>
               )}
             </Box>
           )}
+          
+          {/* Show message when no real data */}
+          {!shouldShowSparkline && (trend === null || trend === undefined) && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: 'block', fontWeight: 500, opacity: 0.7 }}>
+              Real data only
+            </Typography>
+          )}
         </Box>
         
-        {/* Sparkline Chart */}
-        <Box sx={{ width: 80, height: 40 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <Line 
-                type="monotone" 
-                dataKey="value" 
-                stroke={trend >= 0 ? theme.palette.success.main : theme.palette.error.main} 
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Box>
+        {/* Sparkline Chart - Only shown when real data is available */}
+        {shouldShowSparkline && (
+          <Box sx={{ width: 100, height: 50 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sparklineData}>
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke={trend >= 0 ? theme.palette.success.main : theme.palette.error.main} 
+                  strokeWidth={3}
+                  dot={false}
+                  isAnimationActive={true}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
+        
+        {/* Placeholder when no sparkline data */}
+        {!shouldShowSparkline && (
+          <Box sx={{ 
+            width: 100, 
+            height: 50, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: alpha(theme.palette.text.primary, 0.03),
+            borderRadius: 2,
+            border: `2px dashed ${alpha(theme.palette.text.primary, 0.08)}`
+          }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+              No trend data
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Card>
   );
-};
-
-/**
- * Generate mock data for sparkline chart
- * @param {number} trend - Trend direction and magnitude (percentage)
- * @returns {Array} - Array of data points for the sparkline
- */
-const generateMockSparklineData = (trend = 0) => {
-  const dataPoints = 10;
-  const data = [];
-  
-  // Generate data with a general trend direction
-  let value = 100;
-  for (let i = 0; i < dataPoints; i++) {
-    // Add some randomness but maintain the general trend direction
-    const change = (Math.random() * 10 - 5) + (trend / 10);
-    value += change;
-    data.push({ value: Math.max(0, value) });
-  }
-  
-  return data;
 };
 
 export default EnhancedPerformanceCard;

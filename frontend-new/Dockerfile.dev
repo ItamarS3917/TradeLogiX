@@ -4,17 +4,23 @@ FROM node:18-slim
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if available)
+# Copy package files first for better caching
 COPY package*.json ./
 COPY vite.config.js ./
 
-# Install dependencies with clean cache to avoid issues
+# Clear npm cache and install dependencies
 RUN npm cache clean --force && \
     npm install && \
-    npm install --save firebase@11.7.3
+    # Specifically install the problematic dependencies
+    npm install lucide-react@^0.515.0 react-hot-toast@^2.5.2 && \
+    # Verify installation
+    npm list lucide-react react-hot-toast || true
 
 # Copy the rest of the application
 COPY . .
+
+# Verify dependencies are available
+RUN npm list --depth=0
 
 # Expose port
 EXPOSE 3000

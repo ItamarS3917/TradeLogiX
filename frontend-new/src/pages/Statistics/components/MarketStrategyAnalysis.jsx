@@ -246,8 +246,7 @@ const MarketStrategyAnalysis = ({ data, loading }) => {
                 <Legend />
                 <Bar 
                   dataKey="expectancy" 
-                  name="Expectancy" 
-                  fill="#8884d8" 
+                  name="Expectancy"
                   // Use dynamic colors based on value
                   fill={(entry) => entry.expectancy > 0 ? '#4caf50' : '#f44336'}
                 />

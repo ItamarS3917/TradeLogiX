@@ -25,14 +25,12 @@ export const OnboardingProvider = ({ children }) => {
     const onboardingCompleted = localStorage.getItem('onboardingCompleted');
     if (onboardingCompleted === 'true') {
       setHasCompletedOnboarding(true);
+      setIsFirstTimeUser(false);
     } else {
+      setHasCompletedOnboarding(false);
       setIsFirstTimeUser(true);
-      // Auto-show tutorial for first-time users (after a slight delay)
-      const timer = setTimeout(() => {
-        setShowTutorial(true);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+      // DO NOT auto-show tutorial - let user choose
+      // The tutorial can be shown manually via help menu or settings
     }
   }, []);
 

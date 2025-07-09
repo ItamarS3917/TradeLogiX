@@ -2,7 +2,7 @@
 // Purpose: Context for theme customization with premium trading-focused design
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { createTheme, ThemeProvider as MuiThemeProvider, alpha } from '@mui/material';
+import { createTheme, ThemeProvider as MuiThemeProvider, alpha, darken, lighten } from '@mui/material';
 import { useAuth } from './AuthContext';
 import { useFirebase } from './FirebaseContext'; // Import Firebase context
 
@@ -332,14 +332,14 @@ export const ThemeProvider = ({ children }) => {
       mode: theme.mode,
       primary: {
         main: theme.primary,
-        light: alpha(theme.primary, 0.8),
-        dark: alpha(theme.primary, 1.2),
+        light: lighten(theme.primary, 0.2),
+        dark: darken(theme.primary, 0.2),
         contrastText: '#FFFFFF'
       },
       secondary: {
         main: theme.secondary,
-        light: alpha(theme.secondary, 0.8),
-        dark: alpha(theme.secondary, 1.2),
+        light: lighten(theme.secondary, 0.2),
+        dark: darken(theme.secondary, 0.2),
         contrastText: '#FFFFFF'
       },
       success: {

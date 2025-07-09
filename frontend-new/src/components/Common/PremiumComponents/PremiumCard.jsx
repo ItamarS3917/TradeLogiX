@@ -48,30 +48,31 @@ const PremiumCard = ({
       onClick={onClick}
       className={`premium-card ${highlight ? 'premium-card-highlight' : ''} ${className}`}
       sx={{
-        borderRadius: 3,
+        borderRadius: 4,
         border: `1px solid ${
           highlight 
-            ? alpha(getGlowColor(), 0.2)
-            : alpha(theme.palette.text.primary, 0.08)
+            ? alpha(getGlowColor(), 0.15)
+            : alpha(theme.palette.text.primary, 0.06)
         }`,
         backgroundColor: theme.palette.background.paper,
         backgroundImage: highlight 
-          ? `linear-gradient(135deg, ${alpha(getGlowColor(), 0.05)} 0%, ${alpha(theme.palette.background.paper, 0.6)} 100%)`
-          : 'none',
+          ? `linear-gradient(135deg, ${alpha(getGlowColor(), 0.03)} 0%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+          : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.default, 0.3)} 100%)`,
         overflow: 'hidden',
         position: 'relative',
-        transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
         boxShadow: highlight 
-          ? `0 8px 24px ${alpha(getGlowColor(), 0.15)}, 0 4px 8px ${alpha(getGlowColor(), 0.1)}`
-          : elevation ? undefined : `0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)`,
+          ? `0 16px 40px ${alpha(getGlowColor(), 0.12)}, 0 8px 16px ${alpha(getGlowColor(), 0.08)}`
+          : elevation ? undefined : `0 8px 32px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.02)`,
         height: '100%',
         cursor: onClick ? 'pointer' : 'default',
         display: 'flex',
         flexDirection: 'column',
+        backdropFilter: 'blur(8px)',
         '&:hover': onClick ? {
-          transform: 'translateY(-4px)',
-          boxShadow: `0 12px 28px ${alpha(getGlowColor(), 0.2)}, 0 8px 12px ${alpha(getGlowColor(), 0.1)}`,
-          borderColor: alpha(getGlowColor(), 0.2)
+          transform: 'translateY(-6px) scale(1.02)',
+          boxShadow: `0 20px 48px ${alpha(getGlowColor(), 0.18)}, 0 12px 24px ${alpha(getGlowColor(), 0.12)}`,
+          borderColor: alpha(getGlowColor(), 0.25)
         } : {},
         '&::before': highlight ? {
           content: '""',
@@ -79,9 +80,10 @@ const PremiumCard = ({
           top: 0,
           left: 0,
           right: 0,
-          height: '3px',
+          height: '4px',
           backgroundColor: getGlowColor(),
-          borderRadius: '3px 3px 0 0'
+          borderRadius: '4px 4px 0 0',
+          boxShadow: `0 4px 12px ${alpha(getGlowColor(), 0.3)}`
         } : {},
         ...sx
       }}
@@ -112,21 +114,36 @@ const PremiumCard = ({
         {(title || icon) && (
           <Box 
             sx={{ 
-              p: 2.5, 
+              p: 3, 
               display: 'flex', 
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+              borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.default, 0.2)} 100%)`,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {icon && (
                 <Box 
                   sx={{ 
-                    mr: 1.5,
+                    mr: 2,
+                    p: 1.5,
+                    borderRadius: 3,
+                    backgroundColor: alpha(
+                      variant !== 'default' 
+                        ? theme.palette[variant].main 
+                        : theme.palette.primary.main,
+                      0.1
+                    ),
                     color: variant !== 'default' 
                       ? theme.palette[variant].main 
-                      : theme.palette.primary.main
+                      : theme.palette.primary.main,
+                    boxShadow: `0 4px 12px ${alpha(
+                      variant !== 'default' 
+                        ? theme.palette[variant].main 
+                        : theme.palette.primary.main,
+                      0.2
+                    )}`
                   }}
                 >
                   {icon}
@@ -134,12 +151,12 @@ const PremiumCard = ({
               )}
               <Box>
                 {title && (
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>
                     {title}
                   </Typography>
                 )}
                 {subtitle && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
                     {subtitle}
                   </Typography>
                 )}
@@ -149,7 +166,7 @@ const PremiumCard = ({
         )}
         
         {/* Content */}
-        <Box sx={{ p: 2.5, flexGrow: 1 }}>
+        <Box sx={{ p: 3, flexGrow: 1 }}>
           {children}
         </Box>
       </Box>

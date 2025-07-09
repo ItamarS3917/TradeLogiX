@@ -97,7 +97,7 @@ const Widget = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: height || '100%',
+        height: isFullscreen ? '100%' : (height || '100%'),
         borderRadius: 2,
         overflow: 'hidden',
         border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
@@ -112,7 +112,6 @@ const Widget = ({
         bottom: isFullscreen ? 0 : 'auto',
         zIndex: isFullscreen ? 1300 : 'auto',
         width: isFullscreen ? '100%' : 'auto',
-        height: isFullscreen ? '100%' : 'auto',
         ...props.sx
       }}
       onMouseEnter={() => setIsHovered(true)}

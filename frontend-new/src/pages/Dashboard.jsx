@@ -1,3 +1,4 @@
+// Simple Dashboard without icons
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -5,474 +6,53 @@ import {
   Grid, 
   CircularProgress, 
   Button, 
-  Divider,
-  Card,
-  CardContent,
-  CardHeader,
-  IconButton,
-  Chip,
-  Tooltip,
+  Avatar,
   useTheme,
   alpha,
-  LinearProgress,
-  Menu,
-  MenuItem,
-  Tab,
-  Tabs,
-  Avatar
+  Chip
 } from '@mui/material';
-import { 
-  Refresh as RefreshIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  ArrowForward as ArrowForwardIcon,
-  CalendarToday as CalendarIcon,
-  BarChart as BarChartIcon,
-  ShowChart as ShowChartIcon,
-  Info as InfoIcon,
-  CheckCircleOutlined as CheckCircleIcon,
-  CancelOutlined as CancelIcon,
-  MoreVert as MoreVertIcon,
-  Timeline as TimelineIcon,
-  Speed as SpeedIcon,
-  MoreHoriz as MoreHorizIcon,
-  FilterList as FilterListIcon,
-  Download as DownloadIcon,
-  Add as AddIcon,
-  Bolt as BoltIcon,
-  Favorite as FavoriteIcon,
-  Timer as TimerIcon,
-  AttachMoney as MoneyIcon,
-  AccountBalance as AccountBalanceIcon,
-  AutoGraph as AutoGraphIcon,
-  PsychologyAlt as PsychologyIcon,
-  AccessTime as AccessTimeIcon,
-  LibraryBooks as LibraryBooksIcon
-} from '@mui/icons-material';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { Link as RouterLink } from 'react-router-dom';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area, BarChart, Bar, Legend, PieChart, Pie, Cell } from 'recharts';
 
 // Import our premium components
-import { 
-  PremiumCard, 
-  PremiumChartContainer, 
-  PremiumTradeCard 
-} from '../components/Common/PremiumComponents';
+import { PremiumCard } from '../components/Common/PremiumComponents';
 
 // Import our enhanced dashboard components
 import EnhancedPerformanceCard from '../components/Dashboard/EnhancedPerformanceCard';
-import TimeframeSelector from '../components/Dashboard/TimeframeSelector';
 import QuickActionsBar from '../components/Dashboard/QuickActionsBar';
+
+// Import Real Data Mode Indicator
+import RealDataModeIndicator from '../components/Common/RealDataModeIndicator';
 
 // Helper function to safely convert Firestore timestamps or strings to Date objects
 const safelyParseDate = (timeValue) => {
-  if (!timeValue) return new Date(); // Fallback to current date
+  if (!timeValue) return new Date();
   
   try {
-    // Handle Firestore timestamp objects
     if (timeValue && typeof timeValue === 'object' && 'seconds' in timeValue && 'nanoseconds' in timeValue) {
       return new Date(timeValue.seconds * 1000 + timeValue.nanoseconds / 1000000);
     }
-    
-    // Handle ISO strings or other date formats
     return new Date(timeValue);
   } catch (error) {
     console.error('Error parsing date:', timeValue, error);
-    return new Date(); // Fallback to current date
+    return new Date();
   }
 };
 
-// Convert trade data to the format expected by PremiumTradeCard
-const convertTradeForCard = (trade) => {
-  return {
-    id: trade.id,
-    symbol: trade.symbol,
-    direction: trade.outcome === 'win' ? 'long' : 'short', // Just for demo, should be actual direction
-    entryTime: new Date(trade.date),
-    entryPrice: 100, // Dummy value, replace with actual
-    exitPrice: trade.outcome === 'win' ? 110 : 90, // Dummy value, replace with actual
-    profitLoss: trade.pnl,
-    positionSize: 1, // Dummy value, replace with actual
-    percentReturn: trade.outcome === 'win' ? 10 : -10, // Dummy value, replace with actual
-    setupType: 'ICT BPR', // Dummy value, replace with actual
-    outcome: trade.outcome
-  };
-};
-
-// Premium Trade Item Component with enhanced mobile layout
-const TradeItem = ({ trade, index }) => {
-  const theme = useTheme();
-  
-  const formattedTrade = convertTradeForCard(trade);
-  
-  const navigateToTradeDetails = () => {
-    window.location.href = `/trades/${trade.id}`;
-  };
-  
-  const handleViewChart = (e) => {
-    e.stopPropagation();
-    // Implement chart view functionality
-  };
-  
-  const handleViewNotes = (e) => {
-    e.stopPropagation();
-    // Implement notes view functionality
-  };
-  
-  return (
-    <Box sx={{ mb: 2 }}>
-      <PremiumTradeCard 
-        trade={formattedTrade} 
-        onClick={navigateToTradeDetails}
-        onViewChart={handleViewChart}
-        onViewNotes={handleViewNotes}
-      />
-    </Box>
-  );
-};
-
-// Mock Data for Performance Chart (replace with real data in production)
-const generatePerformanceMockData = () => {
-  const days = 14;
-  const today = new Date();
-  const data = [];
-  
-  let cumulativePnL = 0;
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    
-    const dailyPnL = Math.random() * 200 - 100; // Random value between -100 and 100
-    cumulativePnL += dailyPnL;
-    
-    data.push({
-      date: format(date, 'MMM dd'),
-      dailyPnL: parseFloat(dailyPnL.toFixed(2)),
-      cumulativePnL: parseFloat(cumulativePnL.toFixed(2))
-    });
-  }
-  
-  return data;
-};
-
-// Generate mock win/loss distribution data
-const generateWinLossData = () => {
-  return [
-    { name: 'Wins', value: 68, color: '#4CAF50' },
-    { name: 'Losses', value: 32, color: '#F44336' },
-  ];
-};
-
-// Generate mock setup performance data
-const generateSetupPerformanceData = () => {
-  return [
-    { name: 'ICT BPR', wins: 18, losses: 6, winRate: 75 },
-    { name: 'MMXM Order Block', wins: 12, losses: 3, winRate: 80 },
-    { name: 'Liquidity Sweep', wins: 10, losses: 8, winRate: 55 },
-    { name: 'FTMO', wins: 8, losses: 4, winRate: 67 },
-    { name: 'Orderflow', wins: 6, losses: 5, winRate: 54 },
-  ];
-};
-
-// Generate time-of-day performance data
-const generateTimePerformanceData = () => {
-  return [
-    { name: '9am-10am', pnl: 480 },
-    { name: '10am-11am', pnl: 320 },
-    { name: '11am-12pm', pnl: -120 },
-    { name: '12pm-1pm', pnl: -80 },
-    { name: '1pm-2pm', pnl: 220 },
-    { name: '2pm-3pm', pnl: 380 },
-    { name: '3pm-4pm', pnl: 180 },
-  ];
-};
-
-// Premium Performance Chart Component with responsive improvements
-const PerformanceChart = ({ data = generatePerformanceMockData(), activeTab = 0 }) => {
-  const theme = useTheme();
-  
-  const renderChartContent = () => {
-    switch (activeTab) {
-      case 0: // P&L Chart
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={data}
-              margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            >
-              <defs>
-                <linearGradient id="colorPnL" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.primary, 0.08)} />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                interval="preserveStartEnd"
-                tick={(props) => {
-                  const { x, y, payload } = props;
-                  const isMobile = window.innerWidth < 600;
-                  // Skip some ticks on mobile to prevent overcrowding
-                  if (isMobile && payload.index % 3 !== 0 && payload.index !== data.length - 1) {
-                    return null;
-                  }
-                  return (
-                    <g transform={`translate(${x},${y})`}>
-                      <text x={0} y={0} dy={16} textAnchor="middle" fill={props.fill} fontSize={props.fontSize}>
-                        {payload.value}
-                      </text>
-                    </g>
-                  );
-                }}
-              />
-              <YAxis 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickFormatter={(value) => `${value}`}
-              />
-              <RechartsTooltip 
-                formatter={(value) => [`${value}`, 'P&L']}
-                labelFormatter={(label) => `Date: ${label}`}
-                contentStyle={{ 
-                  backgroundColor: theme.palette.background.paper, 
-                  border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                  borderRadius: '8px',
-                  boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`,
-                  padding: '10px 14px',
-                  fontSize: '12px',
-                  fontWeight: 600
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="cumulativePnL"
-                stroke={theme.palette.primary.main}
-                strokeWidth={2.5}
-                fillOpacity={1}
-                fill="url(#colorPnL)"
-                dot={{ r: 0 }}
-                activeDot={{ 
-                  r: 6, 
-                  stroke: theme.palette.background.paper, 
-                  strokeWidth: 2,
-                  fill: theme.palette.primary.main
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-      case 1: // Win/Loss Distribution
-        const winLossData = generateWinLossData();
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={winLossData}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={100}
-                paddingAngle={3}
-                dataKey="value"
-                startAngle={90}
-                endAngle={-270}
-                strokeWidth={4}
-                stroke={theme.palette.background.paper}
-              >
-                {winLossData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <RechartsTooltip 
-                formatter={(value, name) => [`${value}%`, name]}
-                contentStyle={{ 
-                  backgroundColor: theme.palette.background.paper, 
-                  border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                  borderRadius: '8px',
-                  boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`,
-                  padding: '10px 14px',
-                  fontSize: '12px',
-                  fontWeight: 600
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        );
-      case 2: // Setup Performance
-        const setupData = generateSetupPerformanceData();
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={setupData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
-              barSize={36}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.primary, 0.08)} vertical={false} />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-              />
-              <YAxis 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickFormatter={(value) => `${value}%`}
-              />
-              <RechartsTooltip 
-                formatter={(value, name) => [value, name === 'winRate' ? 'Win Rate' : name]}
-                contentStyle={{ 
-                  backgroundColor: theme.palette.background.paper, 
-                  border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                  borderRadius: '8px',
-                  boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`,
-                  padding: '10px 14px',
-                  fontSize: '12px',
-                  fontWeight: 600
-                }}
-              />
-              <Bar dataKey="winRate" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      case 3: // Time of Day Performance
-        const timeData = generateTimePerformanceData();
-        return (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={timeData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
-              barSize={36}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.primary, 0.08)} vertical={false} />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-              />
-              <YAxis 
-                tick={{ fill: theme.palette.text.secondary, fontSize: 11, fontWeight: 500 }} 
-                axisLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickLine={{ stroke: alpha(theme.palette.text.primary, 0.08) }}
-                tickFormatter={(value) => `${value}`}
-              />
-              <RechartsTooltip 
-                formatter={(value) => [`${value}`, 'P&L']}
-                contentStyle={{ 
-                  backgroundColor: theme.palette.background.paper, 
-                  border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                  borderRadius: '8px',
-                  boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`,
-                  padding: '10px 14px',
-                  fontSize: '12px',
-                  fontWeight: 600
-                }}
-              />
-              <Bar 
-                dataKey="pnl" 
-                radius={[4, 4, 0, 0]}
-              >
-                {timeData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.pnl >= 0 ? theme.palette.success.main : theme.palette.error.main} 
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      default:
-        return null;
-    }
-  };
-  
-  return (
-    <PremiumChartContainer
-      height={{ xs: 260, sm: 320 }}
-      loading={false}
-    >
-      {renderChartContent()}
-    </PremiumChartContainer>
-  );
-};
-
-// Performance insights component
-const PerformanceInsight = ({ icon, title, content, chipColor, chipText }) => {
-  const theme = useTheme();
-  
-  return (
-    <Box 
-      sx={{ 
-        p: 2.5, 
-        borderRadius: 3,
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-        background: alpha(theme.palette.background.paper, 0.4),
-        mb: 1.5
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-        <Avatar 
-          sx={{ 
-            width: 38, 
-            height: 38, 
-            mr: 1.5, 
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
-            color: theme.palette.primary.main
-          }}
-        >
-          {icon}
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            {title}
-          </Typography>
-          <Chip 
-            label={chipText} 
-            size="small" 
-            color={chipColor} 
-            sx={{ 
-              height: 20, 
-              fontSize: '0.7rem', 
-              fontWeight: 700, 
-              '& .MuiChip-label': { px: 1 } 
-            }} 
-          />
-        </Box>
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-        {content}
-      </Typography>
-    </Box>
-  );
-};
-
-// Dashboard Component
+// Real Data Only Dashboard Component
 const Dashboard = () => {
   const theme = useTheme();
   const [isLoading, setIsLoading] = useState(true);
-  const [chartTab, setChartTab] = useState(0);
-  const [timeframe, setTimeframe] = useState('1M');
-  const [customTimeRange, setCustomTimeRange] = useState({ start: null, end: new Date() });
   const [stats, setStats] = useState({
     winRate: 0,
     todayPnL: 0,
     weeklyPnL: 0,
     monthlyPnL: 0,
-    recentTrades: [],
-    performanceData: []
+    totalTrades: 0,
+    recentTrades: []
   });
   
   const firebase = useFirebase();
@@ -483,12 +63,11 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [user]);
   
-  const fetchDashboardData = async (selectedTimeframe, dateRange) => {
-    // If timeframe and dateRange are not provided, use the current state
-    const tf = selectedTimeframe || timeframe;
-    const dr = dateRange || customTimeRange;
+  const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
+      console.log('🔍 Fetching real trading data from Firebase...');
+      
       // Get today's date range
       const today = new Date();
       const todayStart = startOfDay(today);
@@ -502,12 +81,12 @@ const Dashboard = () => {
       const monthStart = startOfMonth(today);
       const monthEnd = endOfMonth(today);
       
-      // Fetch all trades
+      // Fetch all real trades from Firebase
       const allTradesData = await firebase.getAllTrades();
-      console.log('Fetched trades for dashboard:', allTradesData);
+      console.log('📊 Real trades fetched:', allTradesData.length);
       
-      // Process the data
-      const processedStats = processTradeData(
+      // Process the real data
+      const processedStats = processRealTradeData(
         allTradesData, 
         todayStart, 
         todayEnd, 
@@ -518,37 +97,36 @@ const Dashboard = () => {
       );
       
       setStats(processedStats);
-      
-      // Simulate loading for demo purposes
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      showSnackbar('Failed to load dashboard data: ' + (error.message || 'Unknown error'), 'error');
+      console.error('❌ Error fetching real trading data:', error);
+      showSnackbar('Failed to load trading data: ' + (error.message || 'Unknown error'), 'error');
       setIsLoading(false);
     }
   };
   
-  // Process trade data to calculate statistics
-  const processTradeData = (trades, todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd) => {
+  // Process ONLY real trade data - NO MOCK DATA
+  const processRealTradeData = (trades, todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd) => {
+    console.log('📈 Processing real trade data...');
+    
     if (!trades || trades.length === 0) {
+      console.log('ℹ️ No real trades found - showing empty state');
       return {
         winRate: 0,
         todayPnL: 0,
         weeklyPnL: 0,
         monthlyPnL: 0,
-        recentTrades: [],
-        performanceData: generatePerformanceMockData() // Use mock data when no trades are available
+        totalTrades: 0,
+        recentTrades: []
       };
     }
     
-    // Calculate win rate
+    // Calculate real statistics from actual trades
     const totalTrades = trades.length;
-    const winningTrades = trades.filter(trade => trade.outcome === 'Win').length;
+    const winningTrades = trades.filter(trade => trade.outcome === 'Win' || trade.outcome === 'win').length;
     const winRate = totalTrades > 0 ? Math.round((winningTrades / totalTrades) * 100) : 0;
     
-    // Calculate P&L for different time periods
+    // Calculate real P&L for different time periods
     const todayTrades = trades.filter(trade => {
       const tradeDate = safelyParseDate(trade.entry_time);
       return tradeDate >= todayStart && tradeDate <= todayEnd;
@@ -564,12 +142,12 @@ const Dashboard = () => {
       return tradeDate >= monthStart && tradeDate <= monthEnd;
     });
     
-    // Calculate P&L sums
+    // Calculate real P&L sums
     const todayPnL = todayTrades.reduce((sum, trade) => sum + (parseFloat(trade.profit_loss) || 0), 0);
     const weeklyPnL = weekTrades.reduce((sum, trade) => sum + (parseFloat(trade.profit_loss) || 0), 0);
     const monthlyPnL = monthTrades.reduce((sum, trade) => sum + (parseFloat(trade.profit_loss) || 0), 0);
     
-    // Get recent trades (up to 5)
+    // Get recent real trades (up to 5)
     const recentTrades = [...trades]
       .sort((a, b) => safelyParseDate(b.entry_time) - safelyParseDate(a.entry_time))
       .slice(0, 5)
@@ -578,104 +156,110 @@ const Dashboard = () => {
         date: format(safelyParseDate(trade.entry_time), 'yyyy-MM-dd'),
         symbol: trade.symbol,
         pnl: parseFloat(trade.profit_loss) || 0,
-        outcome: trade.outcome.toLowerCase()
+        outcome: trade.outcome.toLowerCase(),
+        setup_type: trade.setup_type || 'Unknown'
       }));
     
-    // Generate performance trend data
-    // In a real app, this would be calculated from actual trade history
-    const performanceData = generatePerformanceData(trades);
+    console.log('✅ Real data processed:', {
+      totalTrades,
+      winRate,
+      todayPnL,
+      weeklyPnL,
+      monthlyPnL
+    });
     
     return {
       winRate,
       todayPnL,
       weeklyPnL,
       monthlyPnL,
-      recentTrades,
-      performanceData
+      totalTrades,
+      recentTrades
     };
-  };
-
-  // Generate performance data (replace with real calculation in production)
-  const generatePerformanceData = (trades) => {
-    // This is a placeholder - ideally you'd calculate this from real trade history
-    // Group trades by date and calculate cumulative P&L
-    return generatePerformanceMockData();
   };
   
   const handleRefresh = () => {
-    fetchDashboardData(timeframe, customTimeRange);
+    console.log('🔄 Refreshing real trading data...');
+    fetchDashboardData();
   };
   
-  const handleAddTrade = (tradeType) => {
-    // Navigate to trade form with pre-selected type
-    console.log(`Adding ${tradeType} trade`);
-    window.location.href = `/trades/new?type=${tradeType}`;
-  };
-  
-  const handleCardClick = (metricId) => {
-    // Navigate to detailed view or open modal with more details
-    console.log(`Viewing details for ${metricId}`);
-    // Implement detailed view later
-  };
-  
-  const handleChartTabChange = (event, newValue) => {
-    setChartTab(newValue);
+  const handleAddTrade = () => {
+    window.location.href = '/trades';
   };
 
   return (
     <Box className="animate-fade-in">
-      {/* Dashboard Header with enhanced mobile layout */}
+      {/* Real Data Mode Indicator */}
+      <RealDataModeIndicator />
+      
+      {/* Dashboard Header */}
       <Box 
         sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          mb: { xs: 3, sm: 4 },
+          mb: { xs: 4, sm: 5 },
           flexDirection: { xs: 'column', sm: 'row' },
-          gap: { xs: 2, sm: 0 }
+          gap: { xs: 3, sm: 0 },
+          p: { xs: 2, sm: 3 },
+          borderRadius: 3,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+          backdropFilter: 'blur(10px)'
         }}
       >
         <Box>
           <Typography 
-            variant="h4" 
+            variant="h3" 
             sx={{ 
-              fontWeight: 800, 
-              mb: 0.5,
-              fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' },
-              background: `linear-gradient(90deg, ${theme.palette.text.primary} 0%, ${alpha(theme.palette.text.primary, 0.7)} 100%)`,
+              fontWeight: 900, 
+              mb: 1,
+              fontSize: { xs: '2rem', sm: '2.5rem', md: '2.75rem' },
+              textAlign: { xs: 'center', sm: 'left' },
+              background: `linear-gradient(135deg, ${theme.palette.text.primary} 0%, ${alpha(theme.palette.primary.main, 0.8)} 100%)`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.02em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              textAlign: { xs: 'center', sm: 'left' }
+              letterSpacing: '-0.02em'
             }}
           >
             Welcome Back, Trader
           </Typography>
           <Typography 
-            variant="body1" 
+            variant="h6" 
             color="text.secondary"
-            sx={{ fontWeight: 500 }}
+            sx={{ 
+              fontWeight: 500, 
+              textAlign: { xs: 'center', sm: 'left' },
+              fontSize: '1.1rem',
+              opacity: 0.8
+            }}
           >
-            Here's what's happening with your trades today
+            {stats.totalTrades > 0 
+              ? `You have ${stats.totalTrades} real trades logged`
+              : 'Ready to start tracking your real trading performance'
+            }
           </Typography>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
           <Button 
             variant="contained" 
             color="primary"
-            startIcon={<AddIcon />}
+            onClick={handleAddTrade}
             sx={{ 
               fontWeight: 700, 
-              borderRadius: 2.5,
-              px: 2.5,
-              boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontSize: '1rem',
+              boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              '&:hover': {
+                boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
+                transform: 'translateY(-2px)'
+              },
+              transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
             }}
-            component={RouterLink}
-            to="/trades"
           >
             Add Trade
           </Button>
@@ -683,13 +267,21 @@ const Dashboard = () => {
           <Button 
             variant="outlined" 
             color="primary"
-            startIcon={<RefreshIcon />}
             onClick={handleRefresh}
             sx={{ 
               fontWeight: 700, 
-              borderRadius: 2.5,
-              px: 2.5,
-              borderWidth: '1.5px'
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontSize: '1rem',
+              borderWidth: '2px',
+              background: alpha(theme.palette.primary.main, 0.05),
+              '&:hover': {
+                borderWidth: '2px',
+                background: alpha(theme.palette.primary.main, 0.1),
+                transform: 'translateY(-2px)'
+              },
+              transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
             }}
           >
             Refresh
@@ -697,13 +289,11 @@ const Dashboard = () => {
         </Box>
       </Box>
       
-      {/* Quick Actions Bar */}
+      {/* Quick Actions Bar - Real Data Only */}
       <QuickActionsBar 
         marketStatus={{ isOpen: false, message: 'Market Closed' }}
-        todayPlan={null} // Replace with actual plan data when available
-        upcomingEvents={[
-          { id: 'event-1', title: 'FOMC at 2:00 PM', time: '2025-05-19T14:00:00', type: 'economic' }
-        ]}
+        todayPlan={null}
+        upcomingEvents={[]}
         onAddTrade={handleAddTrade}
       />
       
@@ -711,198 +301,123 @@ const Dashboard = () => {
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh" flexDirection="column" gap={2}>
           <CircularProgress size={48} thickness={4} />
           <Typography variant="body2" color="text.secondary" fontWeight={500}>
-            Loading your trading dashboard...
+            Loading your real trading data...
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={{ xs: 2, sm: 3 }}>
-          {/* Performance Summary Cards */}
+        <Grid container spacing={{ xs: 3, sm: 4 }}>
+          {/* Real Performance Summary Cards - NO MOCK DATA */}
           <Grid item xs={12} sm={6} lg={3}>
-            <EnhancedPerformanceCard 
-              title="Win Rate" 
-              value={`${stats.winRate}%`}
-              trend={5} // Example trend percentage
-              previousValue={`${stats.winRate - 5}%`} // Example: previous win rate
-              icon={<SpeedIcon />}
-              color="primary"
-              tooltipText="Percentage of winning trades across all time periods"
-              onClick={() => handleCardClick('win-rate')}
-              sparklineData={[
-                { value: 59 },
-                { value: 57 },
-                { value: 60 },
-                { value: 62 },
-                { value: 65 },
-                { value: 63 },
-                { value: 66 },
-                { value: 65 },
-                { value: 67 },
-                { value: 68 }
-              ]}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6} lg={3}>
-            <EnhancedPerformanceCard 
-              title="Today's P&L" 
-              value={`${stats.todayPnL.toFixed(2)}`}
-              trend={null}
-              previousValue={null}
-              icon={<ShowChartIcon />}
-              color={stats.todayPnL >= 0 ? "success" : "error"}
-              tooltipText={`Profit/Loss from today's trading activity. ${todayTradesToString(stats.recentTrades)}`}
-              onClick={() => handleCardClick('today-pnl')}
-              sparklineData={[
-                { value: 0 },
-                { value: 50 },
-                { value: 120 },
-                { value: 80 },
-                { value: 150 },
-                { value: 180 },
-                { value: 200 },
-                { value: 220 },
-                { value: 240 },
-                { value: 250 }
-              ]}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6} lg={3}>
-            <EnhancedPerformanceCard 
-              title="Weekly P&L" 
-              value={`${stats.weeklyPnL.toFixed(2)}`}
-              trend={12}
-              previousValue={`${(stats.weeklyPnL * 0.88).toFixed(2)}`} // Example previous week P&L
-              icon={<BarChartIcon />}
-              color={stats.weeklyPnL >= 0 ? "success" : "error"}
-              tooltipText="Profit/Loss for the current trading week"
-              onClick={() => handleCardClick('weekly-pnl')}
-              sparklineData={[
-                { value: 150 },
-                { value: 100 },
-                { value: 50 },
-                { value: 0 },
-                { value: -50 },
-                { value: -80 },
-                { value: -110 },
-                { value: -140 },
-                { value: -130 },
-                { value: -111 }
-              ]}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6} lg={3}>
-            <EnhancedPerformanceCard 
-              title="Monthly P&L" 
-              value={`${stats.monthlyPnL.toFixed(2)}`}
-              trend={-3}
-              previousValue={`${(stats.monthlyPnL * 1.03).toFixed(2)}`} // Example previous month P&L
-              icon={<TimelineIcon />}
-              color={stats.monthlyPnL >= 0 ? "success" : "error"}
-              tooltipText="Profit/Loss for the current month"
-              onClick={() => handleCardClick('monthly-pnl')}
-              sparklineData={[
-                { value: 200 },
-                { value: 150 },
-                { value: 100 },
-                { value: 50 },
-                { value: 0 },
-                { value: -50 },
-                { value: -90 },
-                { value: -100 },
-                { value: -105 },
-                { value: -111 }
-              ]}
-            />
-          </Grid>
-          
-          {/* Performance Chart */}
-          <Grid item xs={12}>
-            <PremiumCard
-              title="Performance Analytics"
-              subtitle="Track your trading performance over time"
-              icon={<AutoGraphIcon />}
-              highlight
-              variant="primary"
-              sx={{ mb: 2 }}
+            <Box 
+              sx={{
+                height: '100%',
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+                borderRadius: 4,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.15)}`
+                },
+                transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <Tooltip title="View detailed statistics">
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    component={RouterLink}
-                    to="/statistics"
-                    endIcon={<ArrowForwardIcon />}
-                    sx={{ fontWeight: 700, fontSize: '0.8rem', borderRadius: 2, borderWidth: '1.5px' }}
-                  >
-                    Full Analysis
-                  </Button>
-                </Tooltip>
-              </Box>
-
-              {/* Timeframe Selector */}
-              <TimeframeSelector
-                value={timeframe}
-                onChange={setTimeframe}
-                customRange={customTimeRange}
-                onCustomRangeChange={(newRange) => {
-                  setCustomTimeRange(newRange);
-                  fetchDashboardData('custom', newRange);
-                }}
-                sx={{ mb: 3 }}
+              <EnhancedPerformanceCard 
+                title="Win Rate" 
+                value={stats.totalTrades > 0 ? `${stats.winRate}%` : "0%"}
+                trend={null}
+                previousValue={null}
+                color="primary"
+                tooltipText={stats.totalTrades > 0 
+                  ? `Based on ${stats.totalTrades} real trades` 
+                  : "Add trades to see your real win rate"
+                }
+                sparklineData={null} // NO FAKE SPARKLINE DATA
               />
-              
-              <Tabs 
-                value={chartTab} 
-                onChange={handleChartTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                TabIndicatorProps={{
-                  style: {
-                    backgroundColor: theme.palette.primary.main,
-                    height: 3,
-                    borderRadius: '3px 3px 0 0'
-                  }
-                }}
-                sx={{
-                  borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-                  mb: 2,
-                  '& .MuiTab-root': {
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    textTransform: 'none',
-                    minHeight: 48,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      color: theme.palette.primary.main,
-                      background: alpha(theme.palette.primary.main, 0.05),
-                      borderRadius: '8px 8px 0 0'
-                    },
-                  },
-                  '& .Mui-selected': {
-                    color: theme.palette.primary.main,
-                  }
-                }}
-              >
-                <Tab label="P&L Trend" icon={<MoneyIcon />} iconPosition="start" />
-                <Tab label="Win/Loss Ratio" icon={<BoltIcon />} iconPosition="start" />
-                <Tab label="Setup Performance" icon={<AutoGraphIcon />} iconPosition="start" />
-                <Tab label="Time of Day" icon={<AccessTimeIcon />} iconPosition="start" />
-              </Tabs>
-              
-              <Box sx={{ height: { xs: 280, sm: 320, md: 350 } }}>
-                <PerformanceChart data={stats.performanceData} activeTab={chartTab} />
-              </Box>
-            </PremiumCard>
+            </Box>
           </Grid>
           
-          {/* Recent Trades */}
-          <Grid item xs={12} md={7} lg={8}>
+          <Grid item xs={12} sm={6} lg={3}>
+            <Box 
+              sx={{
+                height: '100%',
+                background: `linear-gradient(135deg, ${alpha(stats.todayPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.02)} 0%, ${alpha(stats.todayPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.08)} 100%)`,
+                borderRadius: 4,
+                border: `1px solid ${alpha(stats.todayPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.12)}`,
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 20px 40px ${alpha(stats.todayPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.15)}`
+                },
+                transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
+            >
+              <EnhancedPerformanceCard 
+                title="Today's P&L" 
+                value={`${stats.todayPnL.toFixed(2)}`}
+                trend={null}
+                previousValue={null}
+                color={stats.todayPnL >= 0 ? "success" : "error"}
+                tooltipText="Real profit/loss from today's trading"
+                sparklineData={null} // NO FAKE SPARKLINE DATA
+              />
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} lg={3}>
+            <Box 
+              sx={{
+                height: '100%',
+                background: `linear-gradient(135deg, ${alpha(stats.weeklyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.02)} 0%, ${alpha(stats.weeklyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.08)} 100%)`,
+                borderRadius: 4,
+                border: `1px solid ${alpha(stats.weeklyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.12)}`,
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 20px 40px ${alpha(stats.weeklyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.15)}`
+                },
+                transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
+            >
+              <EnhancedPerformanceCard 
+                title="Weekly P&L" 
+                value={`${stats.weeklyPnL.toFixed(2)}`}
+                trend={null}
+                previousValue={null}
+                color={stats.weeklyPnL >= 0 ? "success" : "error"}
+                tooltipText="Real profit/loss for this week"
+                sparklineData={null} // NO FAKE SPARKLINE DATA
+              />
+            </Box>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} lg={3}>
+            <Box 
+              sx={{
+                height: '100%',
+                background: `linear-gradient(135deg, ${alpha(stats.monthlyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.02)} 0%, ${alpha(stats.monthlyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.08)} 100%)`,
+                borderRadius: 4,
+                border: `1px solid ${alpha(stats.monthlyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.12)}`,
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: `0 20px 40px ${alpha(stats.monthlyPnL >= 0 ? theme.palette.success.main : theme.palette.error.main, 0.15)}`
+                },
+                transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
+            >
+              <EnhancedPerformanceCard 
+                title="Monthly P&L" 
+                value={`${stats.monthlyPnL.toFixed(2)}`}
+                trend={null}
+                previousValue={null}
+                color={stats.monthlyPnL >= 0 ? "success" : "error"}
+                tooltipText="Real profit/loss for this month"
+                sparklineData={null} // NO FAKE SPARKLINE DATA
+              />
+            </Box>
+          </Grid>
+          
+          {/* Real Trades Section */}
+          <Grid item xs={12} md={8}>
             <PremiumCard
-              title="Recent Trades"
-              icon={<LibraryBooksIcon />}
+              title="Recent Real Trades"
               sx={{ height: '100%' }}
               variant="default"
             >
@@ -911,60 +426,131 @@ const Dashboard = () => {
                   variant="text" 
                   component={RouterLink} 
                   to="/trades"
-                  endIcon={<ArrowForwardIcon />}
                   size="small"
                   sx={{ fontWeight: 700 }}
                 >
-                  View All
+                  View All Trades →
                 </Button>
               </Box>
               
               {stats.recentTrades.length > 0 ? (
                 <Box>
                   {stats.recentTrades.map((trade, index) => (
-                    <TradeItem key={trade.id} trade={trade} index={index} />
+                    <Box 
+                      key={trade.id}
+                      sx={{ 
+                        p: 3, 
+                        mb: 2,
+                        borderRadius: 3,
+                        border: `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.default, 0.2)} 100%)`,
+                        backdropFilter: 'blur(8px)',
+                        transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 12px 24px ${alpha(theme.palette.text.primary, 0.08)}`,
+                          borderColor: alpha(theme.palette.primary.main, 0.2)
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5, fontSize: '1.1rem' }}>
+                            {trade.symbol} - {trade.setup_type}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
+                            {trade.date}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <Typography 
+                            variant="h5" 
+                            color={trade.pnl >= 0 ? 'success.main' : 'error.main'}
+                            fontWeight={900}
+                            sx={{ 
+                              fontSize: '1.3rem',
+                              letterSpacing: '-0.01em',
+                              mb: 0.5
+                            }}
+                          >
+                            ${trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                          </Typography>
+                          <Chip
+                            label={trade.outcome}
+                            size="small"
+                            color={trade.outcome === 'win' ? 'success' : trade.outcome === 'loss' ? 'error' : 'default'}
+                            sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                          />
+                        </Box>
+                      </Box>
+                    </Box>
                   ))}
                 </Box>
               ) : (
                 <Box sx={{ 
                   textAlign: 'center', 
-                  py: 6,
+                  py: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  background: alpha(theme.palette.text.primary, 0.02),
-                  borderRadius: 3,
-                  border: `1px dashed ${alpha(theme.palette.text.primary, 0.1)}`
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+                  borderRadius: 4,
+                  border: `2px dashed ${alpha(theme.palette.primary.main, 0.15)}`,
+                  backdropFilter: 'blur(8px)',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}>
+                  {/* Background decoration */}
+                  <Box sx={{
+                    position: 'absolute',
+                    top: -50,
+                    right: -50,
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+                    opacity: 0.5
+                  }} />
+                  
                   <Avatar 
                     sx={{ 
-                      width: 64, 
-                      height: 64, 
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
+                      width: 80, 
+                      height: 80, 
+                      bgcolor: alpha(theme.palette.primary.main, 0.15),
                       color: theme.palette.primary.main,
-                      mb: 2
+                      mb: 3,
+                      fontSize: '2rem',
+                      fontWeight: 900,
+                      boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      border: `3px solid ${alpha(theme.palette.primary.main, 0.2)}`
                     }}
                   >
-                    <LibraryBooksIcon sx={{ fontSize: 30 }} />
+                    📊
                   </Avatar>
-                  <Typography variant="h6" color="text.primary" gutterBottom fontWeight={700}>
-                    No trades found
+                  <Typography variant="h4" color="text.primary" gutterBottom fontWeight={900} sx={{ mb: 2 }}>
+                    No trades yet
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3, maxWidth: 400 }}>
-                    Start logging your trades to track performance, spot patterns, and improve your strategy.
+                  <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mb: 4, maxWidth: 480, fontWeight: 500, opacity: 0.8 }}>
+                    Start logging your actual trades to track real performance, analyze patterns, and improve your trading strategy with data-driven insights.
                   </Typography>
                   <Button 
                     variant="contained" 
                     component={RouterLink} 
                     to="/trades"
-                    startIcon={<AddIcon />}
+                    size="large"
                     sx={{ 
-                      mt: 1, 
                       fontWeight: 700,
-                      borderRadius: 2.5,
-                      px: 3,
-                      py: 1.5,
-                      boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                      borderRadius: 3,
+                      px: 4,
+                      py: 2,
+                      fontSize: '1.1rem',
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.3)}`,
+                      '&:hover': {
+                        boxShadow: `0 16px 36px ${alpha(theme.palette.primary.main, 0.4)}`,
+                        transform: 'translateY(-2px)'
+                      },
+                      transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
                     }}
                   >
                     Add Your First Trade
@@ -974,136 +560,150 @@ const Dashboard = () => {
             </PremiumCard>
           </Grid>
           
-          {/* Right Sidebar */}
-          <Grid item xs={12} md={5} lg={4}>
-            <Grid container spacing={3} height="100%">
-              {/* TradeSage Insights */}
-              <Grid item xs={12}>
-                <PremiumCard
-                  title="TradeSage Insights"
-                  icon={<PsychologyIcon />}
-                  variant="info"
-                  highlight
-                  sx={{ height: '100%' }}
+          {/* Real Actions Only */}
+          <Grid item xs={12} md={4}>
+            <PremiumCard
+              title="Real Trading Actions"
+              variant="primary"
+              sx={{ 
+                height: '100%',
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+                '&:hover': {
+                  transform: 'translateY(-4px) scale(1.02)',
+                  boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.15)}`
+                },
+                transition: 'all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
+            >
+              <Box sx={{ p: 1, flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  component={RouterLink}
+                  to="/trades"
+                  sx={{ 
+                    fontWeight: 700,
+                    py: 2,
+                    borderRadius: 3,
+                    fontSize: '1rem',
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    '&:hover': {
+                      boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.4)}`,
+                      transform: 'translateY(-2px)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                  }}
                 >
-                  <Box sx={{ p: 1 }}>
-                    <PerformanceInsight
-                      icon={<BoltIcon />}
-                      title="Your Best Trading Time"
-                      content="You perform best between 10:00 AM and 11:00 AM EST. Consider focusing your trading during this time window."
-                      chipColor="success"
-                      chipText="INSIGHT"
-                    />
-                    
-                    <PerformanceInsight
-                      icon={<TimerIcon />}
-                      title="Hold Time Analysis"
-                      content="Your winning trades average 15 minutes hold time, while losing trades average 32 minutes. Consider tightening stop loss management."
-                      chipColor="warning"
-                      chipText="PATTERN"
-                    />
-                    
-                    <PerformanceInsight
-                      icon={<FavoriteIcon />}
-                      title="Most Profitable Setup"
-                      content="MMXM Order Block setups show an 80% win rate with average R:R of 2.1. Consider increasing position size for these setups."
-                      chipColor="primary"
-                      chipText="OPPORTUNITY"
-                    />
-                  </Box>
-                </PremiumCard>
-              </Grid>
-              
-              {/* Quick Actions */}
-              <Grid item xs={12}>
-                <PremiumCard
-                  title="Today's Actions"
-                  icon={<CalendarIcon />}
-                  variant="primary"
-                  sx={{ height: '100%' }}
+                  📊 Log Real Trade
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="large"
+                  component={RouterLink}
+                  to="/planning"
+                  sx={{ 
+                    fontWeight: 700,
+                    py: 2,
+                    borderRadius: 3,
+                    borderWidth: '2px',
+                    fontSize: '1rem',
+                    background: alpha(theme.palette.primary.main, 0.05),
+                    '&:hover': {
+                      borderWidth: '2px',
+                      background: alpha(theme.palette.primary.main, 0.1),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                  }}
                 >
-                  <Box sx={{ p: 1, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="large"
-                      startIcon={<CalendarIcon />}
-                      component={RouterLink}
-                      to="/planning"
-                      sx={{ 
-                        fontWeight: 700,
-                        py: 1.5,
-                        borderRadius: 2.5,
-                        borderWidth: '1.5px',
-                        justifyContent: 'flex-start'
-                      }}
-                    >
-                      Create Today's Trading Plan
-                    </Button>
-                    
-                    <Button
-                      variant="outlined"
-                      color="info"
-                      size="large"
-                      startIcon={<AccountBalanceIcon />}
-                      component={RouterLink}
-                      to="/statistics"
-                      sx={{ 
-                        fontWeight: 700,
-                        py: 1.5,
-                        borderRadius: 2.5,
-                        borderWidth: '1.5px',
-                        justifyContent: 'flex-start'
-                      }}
-                    >
-                      Review Account Performance
-                    </Button>
-                    
-                    <Button
-                      variant="outlined"
-                      color="success"
-                      size="large"
-                      startIcon={<PsychologyIcon />}
-                      component={RouterLink}
-                      to="/tradesage"
-                      sx={{ 
-                        fontWeight: 700,
-                        py: 1.5,
-                        borderRadius: 2.5,
-                        borderWidth: '1.5px',
-                        justifyContent: 'flex-start'
-                      }}
-                    >
-                      Get AI Trading Insights
-                    </Button>
+                  📅 Create Trading Plan
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="info"
+                  size="large"
+                  component={RouterLink}
+                  to="/statistics"
+                  sx={{ 
+                    fontWeight: 700,
+                    py: 2,
+                    borderRadius: 3,
+                    borderWidth: '2px',
+                    fontSize: '1rem',
+                    background: alpha(theme.palette.info.main, 0.05),
+                    '&:hover': {
+                      borderWidth: '2px',
+                      background: alpha(theme.palette.info.main, 0.1),
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 8px 16px ${alpha(theme.palette.info.main, 0.2)}`
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                  }}
+                >
+                  📈 View Real Statistics
+                </Button>
+                
+                {stats.totalTrades >= 5 && (
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    size="large"
+                    component={RouterLink}
+                    to="/tradesage"
+                    sx={{ 
+                      fontWeight: 700,
+                      py: 2,
+                      borderRadius: 3,
+                      borderWidth: '2px',
+                      fontSize: '1rem',
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.05)} 0%, ${alpha(theme.palette.success.main, 0.1)} 100%)`,
+                      '&:hover': {
+                        borderWidth: '2px',
+                        background: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)} 0%, ${alpha(theme.palette.success.main, 0.15)} 100%)`,
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.25)}`
+                      },
+                      transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                    }}
+                  >
+                    🤖 Get AI Insights
+                  </Button>
+                )}
+                
+                {stats.totalTrades < 5 && (
+                  <Box sx={{ 
+                    p: 3, 
+                    borderRadius: 3, 
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.05)} 0%, ${alpha(theme.palette.info.main, 0.1)} 100%)`,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.15)}`,
+                    textAlign: 'center',
+                    backdropFilter: 'blur(8px)'
+                  }}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontSize: '2rem' }}>🔒</Typography>
+                    </Box>
+                    <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, mb: 1 }}>
+                      AI Insights Locked
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      Add {5 - stats.totalTrades} more real trades to unlock AI-powered insights and personalized recommendations.
+                    </Typography>
                   </Box>
-                </PremiumCard>
-              </Grid>
-            </Grid>
+                )}
+              </Box>
+            </PremiumCard>
           </Grid>
         </Grid>
       )}
     </Box>
   );
-};
-
-// Helper to display today's trades summary
-const todayTradesToString = (recentTrades) => {
-  const todayTrades = recentTrades.filter(trade => {
-    return trade.date === format(new Date(), 'yyyy-MM-dd');
-  });
-  
-  if (todayTrades.length === 0) return "No trades today";
-  
-  const wins = todayTrades.filter(trade => trade.outcome === 'win').length;
-  const losses = todayTrades.filter(trade => trade.outcome === 'loss').length;
-  
-  return `${todayTrades.length} trades (${wins}W/${losses}L)`;
-};
-
-// Helper function for navigation
-const navigateTo = (path) => {
-  window.location.href = path;
 };
 
 export default Dashboard;

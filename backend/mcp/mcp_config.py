@@ -173,6 +173,11 @@ class MCPConfig(BaseModel):
                 "url": os.environ.get("MCP_PREFERENCES_URL", "http://localhost:8008/mcp/preferences"),
                 "version": "1.0.0",
                 "enabled": bool(os.environ.get("MCP_PREFERENCES_ENABLED", "true").lower() in ("true", "1", "yes"))
+            },
+            "backtest": {
+                "url": os.environ.get("MCP_BACKTEST_URL", "http://localhost:8009/mcp/backtest"),
+                "version": "1.0.0",
+                "enabled": bool(os.environ.get("MCP_BACKTEST_ENABLED", "true").lower() in ("true", "1", "yes"))
             }
         }
         

@@ -1,0 +1,107 @@
+# Multi-stage Dockerfile for testing
+FROM python:3.11-slim as base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt requirements-test.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
+
+# Copy package.json for frontend dependencies
+COPY frontend-new/package*.json ./frontend-new/
+RUN cd frontend-new && npm ci
+
+# Install Playwright and browsers
+RUN npx playwright install-deps
+RUN npx playwright install
+
+# Testing stage
+FROM base as test
+
+# Copy application code
+COPY . .
+
+# Install additional test dependencies
+RUN pip install pytest pytest-asyncio pytest-mock pytest-cov factory-boy httpx pytest-benchmark
+
+# Install frontend test dependencies
+RUN cd frontend-new && npm install --save-dev \
+    @testing-library/user-event \
+    msw \
+    @axe-core/react \
+    vitest
+
+# Set environment variables for testing
+ENV TESTING=1
+ENV PYTHONPATH=/app
+ENV NODE_ENV=test
+
+# Create test reports directory
+RUN mkdir -p /app/testing/reports
+
+# Default command for running tests
+CMD ["bash", "-c", "python -m pytest backend/tests/ -v --tb=short"]
+
+# E2E Testing stage
+FROM test as e2e
+
+# Install additional E2E dependencies
+RUN pip install selenium webdriver-manager
+
+# Copy Playwright configuration
+COPY playwright.config.js ./
+COPY testing/e2e/ ./testing/e2e/
+
+# Set up Playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Default command for E2E tests
+CMD ["npx", "playwright", "test"]
+
+# Performance testing stage
+FROM base as performance
+
+# Install k6 for performance testing
+RUN apt-get update && apt-get install -y \
+    gnupg \
+    software-properties-common \
+    && curl -s https://dl.k6.io/key.gpg | apt-key add - \
+    && echo "deb https://dl.k6.io/deb stable main" | tee /etc/apt/sources.list.d/k6.list \
+    && apt-get update \
+    && apt-get install -y k6 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY testing/performance/ ./testing/performance/
+
+CMD ["k6", "run", "./testing/performance/api-load-test.js"]
+
+# Security testing stage
+FROM base as security
+
+# Install security testing tools
+RUN pip install \
+    bandit \
+    safety \
+    semgrep
+
+# Install npm audit and other security tools
+RUN npm install -g \
+    audit-ci \
+    retire \
+    snyk
+
+COPY . .
+
+# Default command for security tests
+CMD ["bash", "-c", "bandit -r backend/ -f json -o testing/reports/bandit-results.json || true && safety check --json --output testing/reports/safety-results.json || true"]

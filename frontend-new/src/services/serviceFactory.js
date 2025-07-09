@@ -1,4 +1,5 @@
 // serviceFactory.js
+// CONFIGURED FOR REAL DATA ONLY - No sample/mock data allowed
 // Factory to select between API and Firebase implementations with caching support
 
 import apiTradeService from './tradeService';
@@ -16,9 +17,19 @@ const USE_ENHANCED_API_BRIDGE = true;
 
 /**
  * Indicates which data source mode to use
+ * CONFIGURED FOR REAL DATA ONLY - No sample/mock data
  * @returns {string} 'firebase', 'api', or 'bridge'
  */
 export const getDataSourceMode = () => {
+  // Check if we're in production mode (real data only)
+  const isProductionMode = import.meta.env.VITE_PRODUCTION_MODE === 'true';
+  const disableSampleData = import.meta.env.VITE_DISABLE_SAMPLE_DATA === 'true';
+  
+  if (isProductionMode || disableSampleData) {
+    console.log('🔒 PRODUCTION MODE: Using Firebase for real data only');
+    return 'firebase';
+  }
+  
   // Check for localStorage override (allows manual toggling)
   const localStorageMode = localStorage.getItem('data_source_mode');
   if (localStorageMode && ['firebase', 'api', 'bridge'].includes(localStorageMode)) {
@@ -31,8 +42,18 @@ export const getDataSourceMode = () => {
     return import.meta.env.VITE_DATA_SOURCE_MODE;
   }
   
-  // Default to Firebase mode to ensure we're not using local DB
+  // Default to Firebase mode to ensure we're using real data storage
+  console.log('📊 Using Firebase for real trading data');
   return 'firebase';
+};
+
+/**
+ * Check if sample data is disabled
+ * @returns {boolean} Whether sample data should be disabled
+ */
+export const isSampleDataDisabled = () => {
+  return import.meta.env.VITE_DISABLE_SAMPLE_DATA === 'true' || 
+         import.meta.env.VITE_PRODUCTION_MODE === 'true';
 };
 
 /**
@@ -54,7 +75,8 @@ const getService = (apiService, firebaseService, bridgeService, enhancedBridgeSe
     window.bridgeService = bridgeService;
     window.enhancedBridgeService = enhancedBridgeService;
     window.dataSourceMode = mode;
-    window.serviceFactory = { getDataSourceMode };
+    window.serviceFactory = { getDataSourceMode, isSampleDataDisabled };
+    window.isRealDataMode = true; // Flag to indicate we're using real data only
   }
   
   switch (mode) {
@@ -66,7 +88,7 @@ const getService = (apiService, firebaseService, bridgeService, enhancedBridgeSe
       return isUsingEnhancedApiBridge() ? enhancedBridgeService : bridgeService;
     default:
       // Fallback to Firebase if unexpected mode
-      console.log('Unknown mode, falling back to Firebase');
+      console.log('Unknown mode, falling back to Firebase for real data');
       return firebaseService;
   }
 };
@@ -120,11 +142,33 @@ export const planningService = getService(apiPlanningService, firebasePlanningSe
 export const journalService = getService(apiJournalService, firebaseJournalService, apiBridge.journals, enhancedApiBridge.journals);
 
 /**
+ * Force real data mode (Firebase only)
+ * This ensures we never use sample/mock data
+ */
+export const forceRealDataMode = () => {
+  localStorage.setItem('data_source_mode', 'firebase');
+  console.log('🎯 Forced real data mode: Firebase only');
+  
+  // Clear any potential sample data flags
+  localStorage.removeItem('use_sample_data');
+  localStorage.removeItem('enable_mock_data');
+  
+  // Force refresh to apply changes
+  window.location.reload();
+};
+
+/**
  * Toggle between data sources programmatically
  * Useful for testing or for providing a UI toggle
  * @param {string} mode - 'firebase', 'api', or 'bridge'
  */
 export const setDataSourceMode = (mode) => {
+  // If sample data is disabled, force Firebase mode
+  if (isSampleDataDisabled() && mode !== 'firebase') {
+    console.warn('Sample data disabled - forcing Firebase mode for real data only');
+    mode = 'firebase';
+  }
+  
   if (!['firebase', 'api', 'bridge'].includes(mode)) {
     console.error('Invalid data source mode:', mode);
     return;

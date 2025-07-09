@@ -1,20 +1,17 @@
 # File: backend/api/routes/trades.py
-# Purpose: API endpoints for trade management
+# Purpose: API endpoints for trade management (Firebase-only)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import date
+from datetime import date, datetime
 import logging
 
-# Import database session
-from ...db.database import get_db
+# Import Firebase repository
+from ...db.firebase_repository import get_firebase_repository
 
-# Import services
-from ...services.trade_service import *
-
-# Import schemas (will implement later)
-from ...db.schemas import TradeCreate, TradeResponse, TradeUpdate, TradeStatistics
+# Import Pydantic models for request/response validation
+from pydantic import BaseModel, Field
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,20 +19,98 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ============= PYDANTIC MODELS =============
+
+class TradeCreate(BaseModel):
+    user_id: str
+    symbol: str
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    position_size: Optional[float] = None
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    setup_type: Optional[str] = None
+    outcome: str  # Win, Loss, Breakeven
+    profit_loss: Optional[float] = None
+    planned_risk_reward: Optional[float] = None
+    actual_risk_reward: Optional[float] = None
+    emotional_state: Optional[str] = None
+    plan_adherence: Optional[str] = None
+    screenshots: Optional[List[str]] = []
+    tags: Optional[List[str]] = []
+    notes: Optional[str] = None
+
+class TradeUpdate(BaseModel):
+    symbol: Optional[str] = None
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    position_size: Optional[float] = None
+    entry_time: Optional[datetime] = None
+    exit_time: Optional[datetime] = None
+    setup_type: Optional[str] = None
+    outcome: Optional[str] = None
+    profit_loss: Optional[float] = None
+    planned_risk_reward: Optional[float] = None
+    actual_risk_reward: Optional[float] = None
+    emotional_state: Optional[str] = None
+    plan_adherence: Optional[str] = None
+    screenshots: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+class TradeResponse(BaseModel):
+    id: str
+    user_id: str
+    symbol: str
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    position_size: Optional[float] = None
+    entry_time: datetime
+    exit_time: Optional[datetime] = None
+    setup_type: Optional[str] = None
+    outcome: str
+    profit_loss: Optional[float] = None
+    planned_risk_reward: Optional[float] = None
+    actual_risk_reward: Optional[float] = None
+    emotional_state: Optional[str] = None
+    plan_adherence: Optional[str] = None
+    screenshots: Optional[List[str]] = []
+    tags: Optional[List[str]] = []
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class TradeStatistics(BaseModel):
+    total_trades: int
+    win_rate: float
+    total_pnl: float
+    average_win: float
+    average_loss: float
+    wins: int
+    losses: int
+
+# ============= API ENDPOINTS =============
+
 @router.post("/", response_model=TradeResponse, status_code=status.HTTP_201_CREATED)
-async def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
+async def create_trade(trade: TradeCreate):
     """
     Create a new trade entry
     """
-    trade_service = TradeService(db)
     try:
-        # Log the trade data for debugging
-        logger.info(f"Creating trade with screenshots: {trade.screenshots}")
-        logger.info(f"Creating trade with tags: {trade.tags}")
+        repo = get_firebase_repository()
         
-        created_trade = trade_service.create_trade(trade)
-        logger.info(f"Trade created with ID: {created_trade.id}, screenshots: {created_trade.screenshots}")
-        return created_trade
+        # Convert to dict and create trade
+        trade_data = trade.dict()
+        trade_id = repo.create_trade(trade_data)
+        
+        # Get the created trade
+        created_trade = repo.get_trade(trade_id)
+        if not created_trade:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created trade")
+        
+        logger.info(f"Trade created with ID: {trade_id}")
+        return TradeResponse(**created_trade)
+        
     except ValueError as e:
         logger.error(f"Error creating trade: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -43,92 +118,144 @@ async def create_trade(trade: TradeCreate, db: Session = Depends(get_db)):
         logger.error(f"Unexpected error creating trade: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@router.get("/", response_model=List[TradeResponse])
-async def get_trades(
-    skip: int = 0, 
-    limit: int = 100, 
-    user_id: Optional[int] = None,
-    symbol: Optional[str] = None,
-    setup_type: Optional[str] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    outcome: Optional[str] = None,
-    db: Session = Depends(get_db)
+@router.get("/user/{user_id}", response_model=List[TradeResponse])
+async def get_user_trades(
+    user_id: str,
+    limit: Optional[int] = Query(100, description="Maximum number of trades to return")
 ):
     """
-    Get all trades with optional filtering
+    Get all trades for a specific user
     """
-    trade_service = TradeService(db)
-    return trade_service.get_trades(
-        skip=skip, 
-        limit=limit,
-        user_id=user_id,
-        symbol=symbol,
-        setup_type=setup_type,
-        start_date=start_date,
-        end_date=end_date,
-        outcome=outcome
-    )
+    try:
+        repo = get_firebase_repository()
+        trades = repo.get_user_trades(user_id, limit)
+        return [TradeResponse(**trade) for trade in trades]
+    except Exception as e:
+        logger.error(f"Error getting user trades: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{trade_id}", response_model=TradeResponse)
-async def get_trade(trade_id: int, db: Session = Depends(get_db)):
+async def get_trade(trade_id: str):
     """
     Get trade by ID
     """
-    trade_service = TradeService(db)
-    trade = trade_service.get_trade(trade_id)
-    if not trade:
-        raise HTTPException(status_code=404, detail="Trade not found")
-    return trade
+    try:
+        repo = get_firebase_repository()
+        trade = repo.get_trade(trade_id)
+        if not trade:
+            raise HTTPException(status_code=404, detail="Trade not found")
+        return TradeResponse(**trade)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting trade: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{trade_id}", response_model=TradeResponse)
-async def update_trade(trade_id: int, trade_update: TradeUpdate, db: Session = Depends(get_db)):
+async def update_trade(trade_id: str, trade_update: TradeUpdate):
     """
     Update trade
     """
-    trade_service = TradeService(db)
     try:
-        # Log the trade data for debugging
-        logger.info(f"Updating trade {trade_id} with screenshots: {trade_update.screenshots}")
-        logger.info(f"Updating trade {trade_id} with tags: {trade_update.tags}")
+        repo = get_firebase_repository()
         
-        trade = trade_service.update_trade(trade_id, trade_update)
-        if not trade:
+        # Check if trade exists
+        existing_trade = repo.get_trade(trade_id)
+        if not existing_trade:
             raise HTTPException(status_code=404, detail="Trade not found")
-            
-        logger.info(f"Trade updated with ID: {trade.id}, screenshots: {trade.screenshots}")
-        return trade
+        
+        # Update only provided fields
+        update_data = {}
+        for field, value in trade_update.dict(exclude_unset=True).items():
+            if value is not None:
+                update_data[field] = value
+        
+        if update_data:
+            success = repo.update_trade(trade_id, update_data)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to update trade")
+        
+        # Get updated trade
+        updated_trade = repo.get_trade(trade_id)
+        logger.info(f"Trade updated with ID: {trade_id}")
+        return TradeResponse(**updated_trade)
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error updating trade: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.delete("/{trade_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_trade(trade_id: int, db: Session = Depends(get_db)):
+async def delete_trade(trade_id: str):
     """
     Delete trade
     """
-    trade_service = TradeService(db)
-    if not trade_service.delete_trade(trade_id):
-        raise HTTPException(status_code=404, detail="Trade not found")
-    return None
+    try:
+        repo = get_firebase_repository()
+        
+        # Check if trade exists
+        existing_trade = repo.get_trade(trade_id)
+        if not existing_trade:
+            raise HTTPException(status_code=404, detail="Trade not found")
+        
+        success = repo.delete_trade(trade_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete trade")
+        
+        logger.info(f"Trade deleted with ID: {trade_id}")
+        return None
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting trade: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/statistics/{user_id}", response_model=TradeStatistics)
 async def get_trade_statistics(
-    user_id: int,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    db: Session = Depends(get_db)
+    user_id: str,
+    year: Optional[int] = Query(None, description="Year for statistics"),
+    month: Optional[int] = Query(None, description="Month for statistics (1-12)")
 ):
     """
     Get trade statistics for a user
     """
-    trade_service = TradeService(db)
-    return trade_service.get_statistics(
-        user_id=user_id,
-        start_date=start_date,
-        end_date=end_date
-    )
+    try:
+        repo = get_firebase_repository()
+        
+        if year and month:
+            # Get monthly statistics
+            stats = repo.get_monthly_statistics(user_id, year, month)
+        else:
+            # Get overall statistics
+            stats = repo.get_user_statistics(user_id)
+        
+        return TradeStatistics(**stats)
+        
+    except Exception as e:
+        logger.error(f"Error getting trade statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# TODO: Add trade analysis endpoints
-# TODO: Add trade screenshot upload endpoint
-# TODO: Add trade export/import endpoints
+@router.get("/user/{user_id}/date-range")
+async def get_trades_by_date_range(
+    user_id: str,
+    start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="End date (YYYY-MM-DD)")
+):
+    """
+    Get trades within a date range
+    """
+    try:
+        repo = get_firebase_repository()
+        
+        # Convert dates to datetime
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        end_datetime = datetime.combine(end_date, datetime.max.time())
+        
+        trades = repo.get_trades_by_date_range(user_id, start_datetime, end_datetime)
+        return [TradeResponse(**trade) for trade in trades]
+        
+    except Exception as e:
+        logger.error(f"Error getting trades by date range: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -19,8 +19,12 @@ import {
   FormHelperText,
   CircularProgress,
   Slider,
-  Divider
+  Divider,
+  Collapse,
+  IconButton,
+  Tooltip
 } from '@mui/material';
+import { KeyboardVoice, Close } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -28,6 +32,7 @@ import { useSnackbar } from '../../contexts/SnackbarContext';
 import { useFirebase } from '../../contexts/FirebaseContext';
 import { useAuth } from '../../contexts/AuthContext'; // Import useAuth to get the current user
 import ImageUploader from './ImageUploader';
+import VoiceTradeEntry from '../VoiceTradeEntry/VoiceTradeEntry';
 
 // Import enums for trade form
 import { PLAN_ADHERENCE, EMOTIONAL_STATE, TRADE_OUTCOME, numericToPlanAdherence, numericToEmotionalState } from '../../constants/tradeEnums';
@@ -88,6 +93,7 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState(initialData?.tags || []);
   const [screenshots, setScreenshots] = useState(initialData?.screenshots || []);
+  const [showVoiceEntry, setShowVoiceEntry] = useState(false);
   
   // Initialize react-hook-form
   const { control, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
@@ -122,6 +128,76 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
       setValue('profit_loss', pnl.toFixed(2));
     }
   }, [entryPrice, exitPrice, positionSize, setValue]);
+
+  // Handle voice trade data
+  const handleVoiceTradeData = (voiceData) => {
+    console.log('Received voice trade data:', voiceData);
+    
+    // Populate form fields with voice data
+    if (voiceData.direction) {
+      // Note: We don't have a direction field in the form, but we could add notes
+      const currentNotes = watch('notes') || '';
+      const directionNote = `Direction: ${voiceData.direction}`;
+      setValue('notes', currentNotes ? `${currentNotes}\n${directionNote}` : directionNote);
+    }
+    
+    if (voiceData.symbol) {
+      setValue('symbol', voiceData.symbol);
+    }
+    
+    if (voiceData.quantity) {
+      setValue('position_size', voiceData.quantity);
+    }
+    
+    if (voiceData.entry_price) {
+      setValue('entry_price', voiceData.entry_price);
+    }
+    
+    if (voiceData.stop_loss) {
+      // Add stop loss to notes since we don't have a dedicated field
+      const currentNotes = watch('notes') || '';
+      const stopNote = `Stop Loss: ${voiceData.stop_loss}`;
+      setValue('notes', currentNotes ? `${currentNotes}\n${stopNote}` : stopNote);
+    }
+    
+    if (voiceData.target_price) {
+      setValue('exit_price', voiceData.target_price);
+    }
+    
+    if (voiceData.planned_risk_reward) {
+      setValue('planned_risk_reward', voiceData.planned_risk_reward);
+    }
+    
+    if (voiceData.timeframe) {
+      // Add timeframe to notes
+      const currentNotes = watch('notes') || '';
+      const timeframeNote = `Timeframe: ${voiceData.timeframe}`;
+      setValue('notes', currentNotes ? `${currentNotes}\n${timeframeNote}` : timeframeNote);
+    }
+    
+    // Set some defaults based on voice input
+    if (voiceData.direction && voiceData.entry_price && voiceData.target_price) {
+      // Determine if it's a win or loss based on direction and prices
+      const isLong = voiceData.direction.toLowerCase() === 'long';
+      const isWin = isLong ? voiceData.target_price > voiceData.entry_price : voiceData.target_price < voiceData.entry_price;
+      setValue('outcome', isWin ? 'Win' : 'Loss');
+    }
+    
+    // Set current time as entry time if not set
+    if (!watch('entry_time')) {
+      setValue('entry_time', new Date());
+    }
+    
+    // Set current time + 1 hour as exit time if not set (placeholder)
+    if (!watch('exit_time')) {
+      const exitTime = new Date();
+      exitTime.setHours(exitTime.getHours() + 1);
+      setValue('exit_time', exitTime);
+    }
+    
+    setShowVoiceEntry(false);
+    showSnackbar('Voice data applied to form successfully!', 'success');
+  };
 
   // Handle form submission
   const handleFormSubmit = (data) => {
@@ -186,10 +262,35 @@ const TradeForm = ({ initialData = null, onSubmit, isLoading }) => {
 
   return (
     <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
-      <Typography variant="h5" gutterBottom>
-        {initialData ? 'Edit Trade' : 'Add New Trade'}
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">
+          {initialData ? 'Edit Trade' : 'Add New Trade'}
+        </Typography>
+        
+        <Tooltip title="Use voice to quickly populate trade details">
+          <Button
+            variant="outlined"
+            startIcon={<KeyboardVoice />}
+            onClick={() => setShowVoiceEntry(!showVoiceEntry)}
+            color={showVoiceEntry ? 'secondary' : 'primary'}
+            sx={{ minWidth: 'auto' }}
+          >
+            {showVoiceEntry ? 'Hide Voice Entry' : 'Voice Entry'}
+          </Button>
+        </Tooltip>
+      </Box>
+      
       <Divider sx={{ mb: 3 }} />
+      
+      {/* Voice Trade Entry */}
+      <Collapse in={showVoiceEntry}>
+        <Box sx={{ mb: 3 }}>
+          <VoiceTradeEntry
+            onTradeDataParsed={handleVoiceTradeData}
+            onClose={() => setShowVoiceEntry(false)}
+          />
+        </Box>
+      </Collapse>
 
       <Box component="form" onSubmit={handleSubmit(handleFormSubmit)} noValidate>
         <Grid container spacing={3}>

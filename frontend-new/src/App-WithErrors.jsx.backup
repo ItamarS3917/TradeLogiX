@@ -1,0 +1,110 @@
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { CssBaseline } from '@mui/material';
+import { FirebaseProvider } from './contexts/FirebaseContext';
+import AuthProvider from './contexts/AuthContext';
+import LoadingProvider from './contexts/LoadingContext';
+import NotificationProvider from './contexts/NotificationContext';
+import SnackbarProvider from './contexts/SnackbarContext';
+import ThemeProvider from './contexts/ThemeContext';
+import { MobileProvider } from './contexts/MobileContext';
+import { KeyboardShortcutsProvider } from './contexts/KeyboardShortcutsProvider';
+import { OnboardingProvider } from './contexts/OnboardingContext';
+import ProtectedRoute from './components/Common/ProtectedRoute';
+import MainLayout from './components/Layout/MainLayout';
+
+// Real Application Pages (No Test/Debug Components)
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import EnhancedDashboard from './pages/EnhancedDashboard';
+import { TradesPage } from './pages/Trades';
+import { PlanningPage } from './pages/Planning';
+import StatisticsPage from './pages/Statistics';
+import TradeSageAssistant from './pages/TradeSage/TradeSageAssistant';
+import SettingsPage from './pages/SettingsPage';
+import CloudSyncPage from './pages/CloudSync';
+import TradingViewPage from './pages/TradingView';
+import NotFound from './pages/NotFound';
+
+// Get data source mode and utility functions
+import { getDataSourceMode, forceRealDataMode, isSampleDataDisabled } from './services/serviceFactory';
+
+function App() {
+  // Initialize app for real data only
+  useEffect(() => {
+    // Clear any old authentication tokens
+    localStorage.removeItem('token');
+    
+    // Force real data mode if not already set
+    const currentMode = getDataSourceMode();
+    if (currentMode !== 'firebase' && isSampleDataDisabled()) {
+      console.log('🎯 Initializing app in real data mode');
+      forceRealDataMode();
+    }
+    
+    // Set global flags for debugging
+    if (typeof window !== 'undefined') {
+      window.isRealDataMode = true;
+      window.sampleDataDisabled = isSampleDataDisabled();
+      window.dataSourceMode = currentMode;
+      
+      console.log('📊 Trading Journal App - Real Data Mode');
+      console.log('Data Source:', currentMode);
+      console.log('Sample Data Disabled:', isSampleDataDisabled());
+    }
+  }, []);
+  
+  return (
+    <NotificationProvider>
+      <SnackbarProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            <FirebaseProvider>
+              <ThemeProvider>
+                <MobileProvider>
+                  <KeyboardShortcutsProvider>
+                    <OnboardingProvider>
+                      <CssBaseline />
+                      <Router>
+                        <Routes>
+                          {/* Public routes */}
+                          <Route path="/login" element={<Login />} />
+                          
+                          {/* Protected routes - Real Application Only */}
+                          <Route element={<ProtectedRoute />}>
+                            <Route element={<MainLayout />}>
+                              {/* Core Trading Journal Features */}
+                              <Route path="/dashboard" element={<Dashboard />} />
+                              <Route path="/dashboard-enhanced" element={<EnhancedDashboard />} />
+                              <Route path="/trades" element={<TradesPage />} />
+                              <Route path="/planning" element={<PlanningPage />} />
+                              <Route path="/statistics" element={<StatisticsPage />} />
+                              <Route path="/tradesage" element={<TradeSageAssistant />} />
+                              
+                              {/* Additional Features */}
+                              <Route path="/cloud-sync" element={<CloudSyncPage />} />
+                              <Route path="/tradingview" element={<TradingViewPage />} />
+                              <Route path="/settings" element={<SettingsPage />} />
+                              
+                              {/* Catch all for undefined routes */}
+                              <Route path="*" element={<NotFound />} />
+                            </Route>
+                          </Route>
+                          
+                          {/* Default redirect to dashboard */}
+                          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                      </Router>
+                    </OnboardingProvider>
+                  </KeyboardShortcutsProvider>
+                </MobileProvider>
+              </ThemeProvider>
+            </FirebaseProvider>
+          </AuthProvider>
+        </LoadingProvider>
+      </SnackbarProvider>
+    </NotificationProvider>
+  );
+}
+
+export default App;
